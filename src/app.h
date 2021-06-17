@@ -33,6 +33,7 @@ typedef struct Defaults {
 } Defaults;
 
 typedef struct App {
+    Memory memory;
     Platform platform;
     Controls controls;
     PixelGrid window_content;
@@ -40,10 +41,6 @@ typedef struct App {
     Time time;
     bool is_running;
     void *user_data;
-
-    ArenaAllocator arena_allocator;
-    bool (*initMemory)(u64 size);
-    void* (*allocateMemory)(u64 size);
 } App;
 
 App *app;
@@ -121,8 +118,8 @@ void _mouseRawMovementSet(i32 x, i32 y) {
     if (app->on.mouseRawMovementSet) app->on.mouseRawMovementSet(x, y);
 }
 
-bool _initMemory(u64 size) {
-    if (app->arena_allocator.address) return false;
+bool initAppMemory(u64 size) {
+    if (app->memory.address) return false;
 
     void* memory_address = app->platform.getMemory(size);
     if (!memory_address) {
@@ -130,13 +127,13 @@ bool _initMemory(u64 size) {
         return false;
     }
 
-    initArenaAllocator(&app->arena_allocator, (u8*)memory_address);
+    initMemory(&app->memory, (u8*)memory_address);
     return true;
 }
 
-void* _allocateMemory(u64 size) {
-    void* memory = allocateMemory(&app->arena_allocator, size);
-    if (memory) return memory;
+void* allocateAppMemory(u64 size) {
+    void *new_memory = allocateMemory(&app->memory, size);
+    if (new_memory) return new_memory;
 
     app->is_running = false;
     return null;
@@ -149,9 +146,7 @@ void _initApp(Defaults *defaults, void* window_content_memory) {
 
     app->is_running = true;
     app->user_data = null;
-    app->arena_allocator.address = null;
-    app->initMemory     = _initMemory;
-    app->allocateMemory = _allocateMemory;
+    app->memory.address = null;
 
     app->on.windowRedraw = null;
     app->on.keyChanged = null;

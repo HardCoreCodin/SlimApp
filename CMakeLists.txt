@@ -21,5 +21,5 @@ add_executable(SlimApp_6_mouse WIN32 src/examples/6_mouse.c)
 project(SlimApp_7_keyboard)
 add_executable(SlimApp_7_keyboard WIN32 src/examples/7_keyboard.c)
 
-project(SlimApp_8_game)
-add_executable(SlimApp_8_game WIN32 src/examples/8_game.c)
+project(SlimApp_8_memory)
+add_executable(SlimApp_8_memory WIN32 src/examples/8_memory.c)

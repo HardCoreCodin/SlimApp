@@ -9,11 +9,15 @@ void showTheAnswer() {
     fillPixelGrid(canvas, Color(Black));
 
     // Draw a multi-colored line of text:
-    drawText(  canvas, Color(Green), "The answer is... :    (!)", 100, 50);
-    drawNumber(canvas, Color(Red  ), 42, 260, 50);
+    drawText(  canvas, Color(Green),
+               "The answer is... :    (!)", 100, 50);
+    drawNumber(canvas, Color(Red  ),
+               42, 260, 50);
 }
 
 void initApp(Defaults *defaults) {
     // Tell the app what to do whenever it needs to redraw the window:
     app->on.windowRedraw = showTheAnswer;
 }
+
+

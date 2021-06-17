@@ -54,8 +54,8 @@ Well documented example applications cover the features:<br>
   </p>
 * Game: Built-in linear memory allocator (a.k.a: Arena) can be used for heap memory, and stored on the App.<br>
   <p float="left">
-    <img src="src/examples/8_game.gif" alt="8_game" height="300">
-    <img src="src/examples/8_game_c.png" alt="8_game_code" width="400">
+    <img src="src/examples/8_memory.gif" alt="8_game" height="300">
+    <img src="src/examples/8_memory_c.png" alt="8_game_code" width="400">
   </p>
 
 <i>*All input capturing for mouse and keyboard is overridable via callbacks (settable function pointers)</i><br>

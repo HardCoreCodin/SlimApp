@@ -54,8 +54,6 @@ void drawMouse(PixelGrid *canvas, Mouse *mouse) {
 }
 
 void drawMouseDoubleClickArea(PixelGrid *canvas, Mouse *mouse) {
-    Platform *os = &app->platform;
-
     Rect rect;
 
     // Draw double-click area:
@@ -77,15 +75,14 @@ void drawMouseDoubleClickArea(PixelGrid *canvas, Mouse *mouse) {
         mouse->double_clicked = false;
         if (mouse->is_captured) {
             mouse->is_captured = false;
-            os->setWindowCapture(false);
-            os->setCursorVisibility(true);
-        } else if (mouse->pos.x > rect.min.x &&
-                   mouse->pos.x < rect.max.x &&
-                   mouse->pos.y > rect.min.y &&
-                   mouse->pos.y < rect.max.y) {
+            app->platform.setWindowCapture(false);
+            app->platform.setCursorVisibility(true);
+        }
+        else if (mouse->pos.x > rect.min.x && mouse->pos.x < rect.max.x &&
+                 mouse->pos.y > rect.min.y && mouse->pos.y < rect.max.y) {
             mouse->is_captured = true;
-            os->setWindowCapture(true);
-            os->setCursorVisibility(false);
+            app->platform.setWindowCapture(true);
+            app->platform.setCursorVisibility(false);
         }
     }
 }
@@ -142,12 +139,10 @@ void drawMouseCoords(PixelGrid *canvas, Mouse *mouse) {
 }
 
 void draw() {
-    // Get the window content from the app and clear it all to black:
     PixelGrid *canvas = &app->window_content;
     fillPixelGrid(canvas, Color(Black));
 
     Mouse *mouse = &app->controls.mouse;
-
     drawMouse(canvas, mouse);
     drawMouseCoords(canvas, mouse);
     drawMouseDoubleClickArea(canvas, mouse);

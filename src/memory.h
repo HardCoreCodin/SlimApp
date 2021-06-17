@@ -8,17 +8,17 @@
 #define MEMORY_SIZE Gigabytes(1)
 #define MEMORY_BASE Terabytes(2)
 
-typedef struct ArenaAllocator {
+typedef struct Memory {
     u8* address;
     u64 occupied;
-} ArenaAllocator;
+} Memory;
 
-void initArenaAllocator(ArenaAllocator *arena_allocator, u8* memory) {
-    arena_allocator->address = (u8*)memory;
-    arena_allocator->occupied = 0;
+void initMemory(Memory *memory, u8* address) {
+    memory->address = (u8*)address;
+    memory->occupied = 0;
 }
 
-void* allocateMemory(ArenaAllocator *memory, u64 size) {
+void* allocateMemory(Memory *memory, u64 size) {
     if (!memory->address) return null;
 
     memory->occupied += size;

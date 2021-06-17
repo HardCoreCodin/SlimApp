@@ -3,11 +3,7 @@
 // Or using the single-header file:
 // #include "../SlimApp.h"
 
-void draw() {
-    // Get the window content from the app and clear it all to black:
-    PixelGrid *canvas = &app->window_content;
-    fillPixelGrid(canvas, Color(Black));
-
+void drawShapesToCanvas(PixelGrid *canvas) {
     // Draw and fill a rectangle with different colors:
     Rect rect;
     rect.min.x = rect.min.y = 100;
@@ -36,7 +32,16 @@ void draw() {
     drawCircle(canvas, Color(Red ), 200, 200, 20);
 }
 
+void draw() {
+    // Get the window content from the app and clear it all to black:
+    PixelGrid *canvas = &app->window_content;
+    fillPixelGrid(canvas, Color(Black));
+
+    drawShapesToCanvas(canvas);
+}
+
 void initApp(Defaults *defaults) {
     // Tell the app what to do whenever it needs to redraw the window:
     app->on.windowRedraw = draw;
 }
+
