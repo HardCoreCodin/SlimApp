@@ -20,7 +20,10 @@ Well documented example applications cover the features:<br>
 * Bare-bone application (one-liner): Well-behaved window (can be resized minimized/maximized and closed)<br>
   <img src="src/examples/1_app.gif" alt="1_app" height="300"><img src="src/examples/1_app_c.png" alt="1_app_code" height="300">
 * Overridable window defaults: Initial dimensions and title.<br>
-  <img src="src/examples/2_defaults.gif" alt="2_defaults" height="300"><img src="src/examples/2_defaults_c.png" alt="2_defaults_code" height="300" width="400">
+  <p float="left">
+  <img src="src/examples/2_defaults.gif" alt="2_defaults" height="300">
+  <img src="src/examples/2_defaults_c.png" alt="2_defaults_code" width="400">
+  </p>
 * Timers and window-title control:<br>
   <img src="src/examples/3_time.gif" alt="3_time" height="300"><img src="src/examples/3_time_c.png" alt="3_time_code" height="300">
 * Drawable window content: Basic shape drawing (Lines, rectangles, triangles and circles)<br>
