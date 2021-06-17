@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
 
-link_libraries(kernel32.lib gdi32.lib)
-
 project(SlimApp_1_app)
 add_executable(SlimApp_1_app WIN32 src/examples/1_app.c)
 

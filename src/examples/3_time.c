@@ -3,26 +3,23 @@
 // #include "../SlimApp.h"
 
 void timer() {
-    // Use the update timer to track the time difference since 
-    // the last time this function was called (delta_time):
+    // Track the time difference since last time this was called:
     startFrameTimer(&app->time.timers.update);
-
-    // Accumulate time deltas:
-    static float accumulated_time = 0;
-    accumulated_time += app->time.timers.update.delta_time;
-
-    // Store a number as a string:
-    static NumberStringBuffer number;
-    int seconds = (int)accumulated_time;
-    printNumberIntoString(seconds, &number);
-
-    app->platform.setWindowTitle(number.string);
-
+    static float before = 0;
+    float now = before + app->time.timers.update.delta_time;
+    // If on a seconds border:
+    if ((int)now > (int)before) {
+        // Update the window title with the current time:
+        static NumberStringBuffer number;
+        printNumberIntoString((int)now, &number);
+        app->platform.setWindowTitle(number.string);
+    }
+    before = now;
     endFrameTimer(&app->time.timers.update);
 }
-
 void initApp(Defaults *defaults) {
-    // Tell the app what to do when redrawing the window:
+    // 'app' is a global pointer to the application instance.
+    // It is the only global variable in the app library.
     app->on.windowRedraw = timer;
 }
 
