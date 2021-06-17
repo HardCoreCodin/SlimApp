@@ -3,8 +3,8 @@
 // #include "../SlimApp.h"
 
 void timer() {
-    // App already has a few timers:
-    // Use the update timer to track the time difference since the last time this function was called (delta_time):
+    // Use the update timer to track the time difference since 
+    // the last time this function was called (delta_time):
     startFrameTimer(&app->time.timers.update);
 
     // Accumulate time deltas:
@@ -22,6 +22,7 @@ void timer() {
 }
 
 void initApp(Defaults *defaults) {
-    // Tell the app what to do whenever it needs to redraw the window:
+    // Tell the app what to do when redrawing the window:
     app->on.windowRedraw = timer;
 }
+

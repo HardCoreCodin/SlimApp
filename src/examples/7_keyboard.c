@@ -104,7 +104,8 @@ void keyChanged(u8 key, bool pressed) {
 }
 
 void initApp(Defaults *defaults) {
-    // Tell the app what to do whenever it needs to redraw the window or a keyboard-key was pressed or released:
+    // Tell the app what to do whenever it needs to redraw 
+    // the window or a keyboard-key was pressed or released:
     app->on.windowRedraw = drawKeyboard;
     app->on.keyChanged   = keyChanged;
 
@@ -120,3 +121,4 @@ void initApp(Defaults *defaults) {
     nav_keys_pressed.up    = false;
     nav_keys_pressed.down  = false;
 }
+

@@ -4,14 +4,8 @@
 // #include "../SlimApp.h"
 
 typedef struct NavigationKeys { u8 left, right, up, down; } NavigationKeys;
-typedef struct Player {
-    f32 size, speed;
-    vec2 pos;
-} Player;
-typedef struct Game {
-    Player player;
-    NavigationKeys keys, move;
-} Game;
+typedef struct Player { f32 size, speed; vec2 pos;} Player;
+typedef struct Game { Player player; NavigationKeys keys, move; } Game;
 
 void drawPlayer() {
     // App already has a few timers:
@@ -50,15 +44,18 @@ void movePlayer(u8 key, bool pressed) {
 }
 
 void initApp(Defaults *defaults) {
-    // Tell the app what to do whenever it needs to redraw the window or a keyboard-key was pressed or released:
+    // Tell the app what to do when redrawing the window
+    // or a keyboard-key was pressed or released:
     app->on.windowRedraw = drawPlayer;
     app->on.keyChanged   = movePlayer;
 
-    // Get a contiguous block of memory from the OS for use as a linear allocator (a.k.: Arena):
+    // Get a contiguous block of memory from the OS 
+    // for use as a linear allocator (a.k.: Arena):
     if (!app->initMemory(sizeof(Game)))
         return; // App will terminate if this failed
 
-    // Allocate memory for the Game using the arena allocator and store it's pointer on the app:
+    // Allocate memory for the Game using the arena allocator 
+    // and store it's pointer on the app:
     app->user_data = app->allocateMemory(sizeof(Game));
     if (!app->user_data)
         return; // App will terminate if this failed
