@@ -1,4 +1,6 @@
 #include "../app.h"
+// Or using the single-header file:
+// #include "../SlimApp.h"
 
 void initApp(Defaults *defaults) {
     // Some initial defaults can be overridden before the window is displayed:

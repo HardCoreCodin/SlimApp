@@ -1,5 +1,7 @@
 #include "../app.h"
 #include "../shapes.h"
+// Or using the single-header file:
+// #include "../SlimApp.h"
 
 void draw() {
     // Get the window content from the app and clear it all to black:

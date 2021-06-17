@@ -1,6 +1,8 @@
 #include "../app.h"
 #include "../text.h"
 #include "../shapes.h"
+// Or using the single-header file:
+// #include "../SlimApp.h"
 
 void drawMouse(PixelGrid *canvas, Mouse *mouse) {
     Rect rect;
@@ -89,8 +91,8 @@ void drawMouseDoubleClickArea(PixelGrid *canvas, Mouse *mouse) {
 }
 
 void drawMouseCoords(PixelGrid *canvas, Mouse *mouse) {
-    drawText(canvas, Color(White), "X", 380, 7);
-    drawText(canvas, Color(White), "Y", 430, 7);
+    drawText(canvas, Color(White), "X", 350, 7);
+    drawText(canvas, Color(White), "Y", 400, 7);
 
     drawText(canvas, Color(White),"  Cursor:", 240, 20);
     drawText(canvas, Color(Grey ),"RawInput:", 240, 32);

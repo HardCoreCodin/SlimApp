@@ -1,4 +1,6 @@
 #include "../app.h"
+// Or using the single-header file:
+// #include "../SlimApp.h"
 
 void timer() {
     // App already has a few timers:

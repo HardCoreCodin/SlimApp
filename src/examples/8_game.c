@@ -1,5 +1,7 @@
 #include "../app.h"
 #include "../shapes.h"
+// Or using the single-header file:
+// #include "../SlimApp.h"
 
 typedef struct NavigationKeys { u8 left, right, up, down; } NavigationKeys;
 typedef struct Player {

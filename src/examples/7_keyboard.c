@@ -1,6 +1,8 @@
 #include "../app.h"
 #include "../text.h"
 #include "../shapes.h"
+// Or using the single-header file:
+// #include "../SlimApp.h"
 
 typedef struct NavigationKeys { u8 left, right, up, down; } NavigationKeys;
 NavigationKeys nav_keys, nav_keys_pressed;
