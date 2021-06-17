@@ -1,10 +1,9 @@
 # SlimApp
 
 A minimalist platform-agnostic app layer for desktop apps written in plain C.<br>
-
+A bare-bone app executable on Windows weights 18 KB(!)
 Can be complied in either C or C++ (only uses the subset of C that C++ also supports).<br>
-
-Available as either a single header file or a directory of headers (a "unity build" setup).
+Available as either a single header file, or a directory of headers (a "unity build" setup).
 
 Architecture: <br>
 -
