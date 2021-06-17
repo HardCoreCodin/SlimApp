@@ -4,8 +4,8 @@
 // Or using the single-header file:
 // #include "../SlimApp.h"
 
-typedef struct NavigationKeys { u8 left, right, up, down; } NavigationKeys;
-NavigationKeys nav_keys, nav_keys_pressed;
+typedef struct { u8 left, right, up, down; } Nav;
+Nav nav_keys, nav_keys_pressed;
 
 void drawKeyboard() {
     // Get the window content from the app and clear it all to black:
@@ -94,7 +94,6 @@ void drawKeyboard() {
     fillRect(canvas, Color(nav_keys_pressed.up ? White : Grey), &rect);
     drawText(canvas, Color(nav_keys_pressed.up ? Grey : White), "W", rect.min.x + 5, rect.min.y + 5);
 }
-
 void keyChanged(u8 key, bool pressed) {
     // Capture changes to custom-bound keys and store their state:
     if (key == nav_keys.left)  nav_keys_pressed.left  = pressed;
@@ -104,8 +103,8 @@ void keyChanged(u8 key, bool pressed) {
 }
 
 void initApp(Defaults *defaults) {
-    // Tell the app what to do whenever it needs to redraw 
-    // the window or a keyboard-key was pressed or released:
+    // Tell the app how to draw the window content,
+    // and what to do when the keyboard state changes:
     app->on.windowRedraw = drawKeyboard;
     app->on.keyChanged   = keyChanged;
 

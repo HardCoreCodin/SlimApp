@@ -27,13 +27,15 @@ void drawShapesToCanvas(PixelGrid *canvas) {
     drawVLine2D(canvas, Color(Cyan   ), 90, 310, 310);
     drawVLine2D(canvas, Color(Cyan   ), 90, 310, 90);
 
-    // Draw a filled and un-filled circles with different colors:
-    fillCircle(canvas, Color(Cyan), 200, 175, 18);
-    drawCircle(canvas, Color(Red ), 200, 200, 20);
+    // Draw a filled and un-filled circles:
+    fillCircle(canvas, Color(Cyan),
+               200, 175, 18);
+    drawCircle(canvas, Color(Red ),
+               200, 200, 20);
 }
 
 void draw() {
-    // Get the window content from the app and clear it all to black:
+    // Clear the window content to black:
     PixelGrid *canvas = &app->window_content;
     fillPixelGrid(canvas, Color(Black));
 
@@ -41,7 +43,7 @@ void draw() {
 }
 
 void initApp(Defaults *defaults) {
-    // Tell the app what to do whenever it needs to redraw the window:
+    // Tell the app how to draw the window content:
     app->on.windowRedraw = draw;
 }
 
