@@ -1,6 +1,37 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#ifndef NDEBUG
+#include <tchar.h>
+#include <stdio.h>
+#include <strsafe.h>
+
+void DisplayError(LPTSTR lpszFunction) {
+    LPVOID lpMsgBuf;
+    LPVOID lpDisplayBuf;
+    DWORD dw = GetLastError();
+
+    FormatMessage(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER |
+            FORMAT_MESSAGE_FROM_SYSTEM |
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL, dw,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPTSTR) &lpMsgBuf, 0, NULL);
+
+    lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
+
+    if (FAILED( StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR),
+                                TEXT("%s failed with error code %d as follows:\n%s"), lpszFunction, dw, lpMsgBuf)))
+        printf("FATAL ERROR: Unable to output error code.\n");
+
+    _tprintf(TEXT("ERROR: %s\n"), (LPCTSTR)lpDisplayBuf);
+
+    LocalFree(lpMsgBuf);
+    LocalFree(lpDisplayBuf);
+}
+#endif
+
 #define GET_X_LPARAM(lp)                        ((int)(short)LOWORD(lp))
 #define GET_Y_LPARAM(lp)                        ((int)(short)HIWORD(lp))
 
@@ -43,6 +74,67 @@ inline bool hasRawMouseInput(LPARAM lParam) {
         getRawInput((LPVOID)&raw_inputs) == raw_input_size &&
         raw_inputs.header.dwType == RIM_TYPEMOUSE
     );
+}
+
+void Win32_closeFile(void *handle) { CloseHandle(handle); }
+void* Win32_openFileForReading(const char* path) {
+    HANDLE handle = CreateFile(path,           // file to open
+                               GENERIC_READ,          // open for reading
+                               FILE_SHARE_READ,       // share for reading
+                               NULL,                  // default security
+                               OPEN_EXISTING,         // existing file only
+                               FILE_ATTRIBUTE_NORMAL, // normal file
+                               NULL);                 // no attr. template
+#ifndef NDEBUG
+    if (handle == INVALID_HANDLE_VALUE) {
+        DisplayError(TEXT("CreateFile"));
+        _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for read.\n"), path);
+        return NULL;
+    }
+#endif
+    return handle;
+}
+void* Win32_openFileForWriting(const char* path) {
+    HANDLE handle = CreateFile(path,           // file to open
+                               GENERIC_WRITE,          // open for writing
+                               0,                      // do not share
+                               NULL,                   // default security
+                               CREATE_NEW,             // create new file only
+                               FILE_ATTRIBUTE_NORMAL,  // normal file
+                               NULL);
+#ifndef NDEBUG
+    if (handle == INVALID_HANDLE_VALUE) {
+        DisplayError(TEXT("CreateFile"));
+        _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for read.\n"), path);
+        return NULL;
+    }
+#endif
+    return handle;
+}
+bool Win32_readFromFile(LPVOID out, DWORD size, HANDLE handle) {
+    DWORD bytes_read = 0;
+    BOOL result = ReadFile(handle, out, size, &bytes_read, NULL);
+#ifndef NDEBUG
+    if (result == FALSE) {
+        DisplayError(TEXT("ReadFile"));
+        printf("Terminal failure: Unable to read from file.\n GetLastError=%08x\n", GetLastError());
+        CloseHandle(handle);
+    }
+#endif
+    return result != FALSE;
+}
+
+bool Win32_writeToFile(LPVOID out, DWORD size, HANDLE handle) {
+    DWORD bytes_written = 0;
+    BOOL result = WriteFile(handle, out, size, &bytes_written, NULL);
+#ifndef NDEBUG
+    if (result == FALSE) {
+        DisplayError(TEXT("ReadFile"));
+        printf("Terminal failure: Unable to read from file.\n GetLastError=%08x\n", GetLastError());
+        CloseHandle(handle);
+    }
+#endif
+    return result != FALSE;
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -154,6 +246,11 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     app->platform.setWindowTitle      = Win32_setWindowTitle;
     app->platform.setWindowCapture    = Win32_setWindowCapture;
     app->platform.setCursorVisibility = Win32_setCursorVisibility;
+    app->platform.closeFile           = Win32_closeFile;
+    app->platform.openFileForReading  = Win32_openFileForReading;
+    app->platform.openFileForWriting  = Win32_openFileForWriting;
+    app->platform.readFromFile        = Win32_readFromFile;
+    app->platform.writeToFile         = Win32_writeToFile;
 
     Defaults defaults;
     _initApp(&defaults, window_content_memory);

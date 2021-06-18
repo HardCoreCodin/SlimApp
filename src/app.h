@@ -18,12 +18,21 @@ typedef struct AppCallbacks {
     void (*mouseRawMovementSet)(i32 x, i32 y);
 } AppCallbacks;
 
+typedef void* (*CallbackForFileOpen)(const char* file_path);
+typedef bool  (*CallbackForFileRW)(void *out, unsigned long, void *handle);
+typedef void  (*CallbackForFileClose)(void *handle);
+
 typedef struct Platform {
-    CallbackWithCharPtr setWindowTitle;
-    CallbackWithBool    setWindowCapture;
-    CallbackWithBool    setCursorVisibility;
-    CallbackWithInt getMemory;
-    GetTicks getTicks;
+    GetTicks             getTicks;
+    CallbackWithInt      getMemory;
+    CallbackWithCharPtr  setWindowTitle;
+    CallbackWithBool     setWindowCapture;
+    CallbackWithBool     setCursorVisibility;
+    CallbackForFileClose closeFile;
+    CallbackForFileOpen  openFileForReading;
+    CallbackForFileOpen  openFileForWriting;
+    CallbackForFileRW    readFromFile;
+    CallbackForFileRW    writeToFile;
     u64 ticks_per_second;
 } Platform;
 

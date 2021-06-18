@@ -23,3 +23,6 @@ add_executable(SlimApp_7_keyboard WIN32 src/examples/7_keyboard.c)
 
 project(SlimApp_8_memory)
 add_executable(SlimApp_8_memory WIN32 src/examples/8_memory.c)
+
+project(SlimApp_9_files)
+add_executable(SlimApp_9_files WIN32 src/examples/9_files.c)
