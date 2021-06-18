@@ -59,7 +59,7 @@ Well documented example applications cover the features:<br>
   </p>
 * File: Opening/closing and reading/writing files in a platform-agnostic way (using os-specific API).<br>
   <p float="left">
-    <img src="src/examples/9_files.gif" alt="9_files" height="300">
+    <img src="src/examples/9_files_io.gif" alt="9_files" height="300">
     <img src="src/examples/9_files_c.png" alt="9_files_code" width="400">
   </p>
 
