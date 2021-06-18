@@ -48,10 +48,12 @@ App *app;
 void initApp(Defaults *defaults);
 
 void _windowRedraw() {
+    if (!app->is_running) return;
     if (app->on.windowRedraw) app->on.windowRedraw();
 }
 
 void _windowResize(u16 width, u16 height) {
+    if (!app->is_running) return;
     updateDimensions(&app->window_content.dimensions, width, height);
 
     if (app->on.windowResize) app->on.windowResize(width, height);
@@ -127,7 +129,7 @@ bool initAppMemory(u64 size) {
         return false;
     }
 
-    initMemory(&app->memory, (u8*)memory_address);
+    initMemory(&app->memory, (u8*)memory_address, size);
     return true;
 }
 

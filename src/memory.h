@@ -10,18 +10,19 @@
 
 typedef struct Memory {
     u8* address;
-    u64 occupied;
+    u64 occupied, capacity;
 } Memory;
 
-void initMemory(Memory *memory, u8* address) {
+void initMemory(Memory *memory, u8* address, u64 capacity) {
     memory->address = (u8*)address;
+    memory->capacity = capacity;
     memory->occupied = 0;
 }
 
 void* allocateMemory(Memory *memory, u64 size) {
     if (!memory->address) return null;
-
     memory->occupied += size;
+    if (memory->occupied > memory->capacity) return null;
 
     void* address = memory->address;
     memory->address += size;

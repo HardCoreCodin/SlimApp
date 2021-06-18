@@ -343,20 +343,21 @@ void fillPixelGrid(PixelGrid *pixel_grid, RGBA color) {
 #define MEMORY_SIZE Gigabytes(1)
 #define MEMORY_BASE Terabytes(2)
 
-typedef struct ArenaAllocator {
+typedef struct Memory {
     u8* address;
-    u64 occupied;
-} ArenaAllocator;
+    u64 occupied, capacity;
+} Memory;
 
-void initArenaAllocator(ArenaAllocator *arena_allocator, u8* memory) {
-    arena_allocator->address = (u8*)memory;
-    arena_allocator->occupied = 0;
+void initMemory(Memory *memory, u8* address, u64 capacity) {
+    memory->address = (u8*)address;
+    memory->capacity = capacity;
+    memory->occupied = 0;
 }
 
-void* allocateMemory(ArenaAllocator *memory, u64 size) {
+void* allocateMemory(Memory *memory, u64 size) {
     if (!memory->address) return null;
-
     memory->occupied += size;
+    if (memory->occupied > memory->capacity) return null;
 
     void* address = memory->address;
     memory->address += size;
@@ -873,6 +874,7 @@ typedef struct Defaults {
 } Defaults;
 
 typedef struct App {
+    Memory memory;
     Platform platform;
     Controls controls;
     PixelGrid window_content;
@@ -880,10 +882,6 @@ typedef struct App {
     Time time;
     bool is_running;
     void *user_data;
-
-    ArenaAllocator arena_allocator;
-    bool (*initMemory)(u64 size);
-    void* (*allocateMemory)(u64 size);
 } App;
 
 App *app;
@@ -891,10 +889,12 @@ App *app;
 void initApp(Defaults *defaults);
 
 void _windowRedraw() {
+    if (!app->is_running) return;
     if (app->on.windowRedraw) app->on.windowRedraw();
 }
 
 void _windowResize(u16 width, u16 height) {
+    if (!app->is_running) return;
     updateDimensions(&app->window_content.dimensions, width, height);
 
     if (app->on.windowResize) app->on.windowResize(width, height);
@@ -902,7 +902,7 @@ void _windowResize(u16 width, u16 height) {
 }
 
 void _keyChanged(u8 key, bool pressed) {
-         if (key == app->controls.key_map.ctrl) app->controls.is_pressed.ctrl  = pressed;
+    if (key == app->controls.key_map.ctrl) app->controls.is_pressed.ctrl  = pressed;
     else if (key == app->controls.key_map.alt) app->controls.is_pressed.alt   = pressed;
     else if (key == app->controls.key_map.shift) app->controls.is_pressed.shift = pressed;
     else if (key == app->controls.key_map.space) app->controls.is_pressed.space = pressed;
@@ -961,8 +961,8 @@ void _mouseRawMovementSet(i32 x, i32 y) {
     if (app->on.mouseRawMovementSet) app->on.mouseRawMovementSet(x, y);
 }
 
-bool _initMemory(u64 size) {
-    if (app->arena_allocator.address) return false;
+bool initAppMemory(u64 size) {
+    if (app->memory.address) return false;
 
     void* memory_address = app->platform.getMemory(size);
     if (!memory_address) {
@@ -970,13 +970,13 @@ bool _initMemory(u64 size) {
         return false;
     }
 
-    initArenaAllocator(&app->arena_allocator, (u8*)memory_address);
+    initMemory(&app->memory, (u8*)memory_address, size);
     return true;
 }
 
-void* _allocateMemory(u64 size) {
-    void* memory = allocateMemory(&app->arena_allocator, size);
-    if (memory) return memory;
+void* allocateAppMemory(u64 size) {
+    void *new_memory = allocateMemory(&app->memory, size);
+    if (new_memory) return new_memory;
 
     app->is_running = false;
     return null;
@@ -989,9 +989,7 @@ void _initApp(Defaults *defaults, void* window_content_memory) {
 
     app->is_running = true;
     app->user_data = null;
-    app->arena_allocator.address = null;
-    app->initMemory     = _initMemory;
-    app->allocateMemory = _allocateMemory;
+    app->memory.address = null;
 
     app->on.windowRedraw = null;
     app->on.keyChanged = null;

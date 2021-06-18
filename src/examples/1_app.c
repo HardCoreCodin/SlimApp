@@ -10,6 +10,3 @@ void initApp(Defaults *defaults) {
     // a well-behaved window that can be
     // resized, minimized and closed
 }
-
-
-
