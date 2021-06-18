@@ -4,7 +4,7 @@
 // #include "../SlimApp.h"
 
 void showTheAnswer() {
-    // Clear the window content to black::
+    // Clear the window content to black:
     PixelGrid *canvas = &app->window_content;
     fillPixelGrid(canvas, Color(Black));
 

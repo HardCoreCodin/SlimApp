@@ -21,6 +21,34 @@ void drawKeyboard() {
     rect.max.y = 280;
     drawRect(canvas, Color(White), &rect);
 
+    // Draw the 'A' key:
+    rect.min.x = 256;
+    rect.max.x = 276;
+    rect.min.y = 216;
+    rect.max.y = 236;
+    fillRect(canvas, Color(nav_keys_pressed.left ? White : Grey), &rect);
+    drawText(canvas, Color(nav_keys_pressed.left ? Grey : White), "A", rect.min.x + 5, rect.min.y + 5);
+
+    // Draw the 'S' key:
+    rect.min.x += 22;
+    rect.max.x += 22;
+    fillRect(canvas, Color(nav_keys_pressed.down ? White : Grey), &rect);
+    drawText(canvas, Color(nav_keys_pressed.down ? Grey : White), "S", rect.min.x + 5, rect.min.y + 5);
+
+    // Draw the 'D' key:
+    rect.min.x += 22;
+    rect.max.x += 22;
+    fillRect(canvas, Color(nav_keys_pressed.right ? White : Grey), &rect);
+    drawText(canvas, Color(nav_keys_pressed.right ? Grey : White), "D", rect.min.x + 5, rect.min.y + 5);
+
+    // Draw the 'W' key:
+    rect.min.x -= 28;
+    rect.max.x -= 28;
+    rect.min.y -= 22;
+    rect.max.y -= 22;
+    fillRect(canvas, Color(nav_keys_pressed.up ? White : Grey), &rect);
+    drawText(canvas, Color(nav_keys_pressed.up ? Grey : White), "W", rect.min.x + 5, rect.min.y + 5);
+
     // Draw the left Ctrl key:
     rect.min.x = 222;
     rect.max.x = 250;
@@ -64,35 +92,9 @@ void drawKeyboard() {
     rect.max.x = 390;
     rect.min.y = 260;
     rect.max.y = 278;
-    fillRect(canvas, Color(app->controls.is_pressed.space ? White : Grey), &rect);
-
-    // Draw the 'A' key:
-    rect.min.x = 256;
-    rect.max.x = 276;
-    rect.min.y = 216;
-    rect.max.y = 236;
-    fillRect(canvas, Color(nav_keys_pressed.left ? White : Grey), &rect);
-    drawText(canvas, Color(nav_keys_pressed.left ? Grey : White), "A", rect.min.x + 5, rect.min.y + 5);
-
-    // Draw the 'S' key:
-    rect.min.x += 22;
-    rect.max.x += 22;
-    fillRect(canvas, Color(nav_keys_pressed.down ? White : Grey), &rect);
-    drawText(canvas, Color(nav_keys_pressed.down ? Grey : White), "S", rect.min.x + 5, rect.min.y + 5);
-
-    // Draw the 'D' key:
-    rect.min.x += 22;
-    rect.max.x += 22;
-    fillRect(canvas, Color(nav_keys_pressed.right ? White : Grey), &rect);
-    drawText(canvas, Color(nav_keys_pressed.right ? Grey : White), "D", rect.min.x + 5, rect.min.y + 5);
-
-    // Draw the 'W' key:
-    rect.min.x -= 28;
-    rect.max.x -= 28;
-    rect.min.y -= 22;
-    rect.max.y -= 22;
-    fillRect(canvas, Color(nav_keys_pressed.up ? White : Grey), &rect);
-    drawText(canvas, Color(nav_keys_pressed.up ? Grey : White), "W", rect.min.x + 5, rect.min.y + 5);
+    fillRect(canvas,
+             Color(app->controls.is_pressed.space ?
+                   White : Grey), &rect);
 }
 void keyChanged(u8 key, bool pressed) {
     // Capture changes to custom-bound keys and store their state:
