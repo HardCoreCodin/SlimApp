@@ -1,8 +1,8 @@
-#include "../app.h"
-#include "../text.h"
-#include "../shapes.h"
+#include "../SlimApp/app.h"
+#include "../SlimApp/core/text.h"
+#include "../SlimApp/core/shapes.h"
 // Or using the single-header file:
-// #include "../SlimApp.h"
+//#include "../SlimApp.h"
 
 typedef struct { u8 left, right, up, down; } Nav;
 Nav nav_keys, nav_keys_pressed;

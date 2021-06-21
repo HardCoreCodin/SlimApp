@@ -1,21 +1,10 @@
 #pragma once
 
-#include "./base.h"
-#include "./time.h"
-#include "./pixels.h"
-#include "./memory.h"
-#include "./controls.h"
-
-//#include "./core/base.h"
-//#include "./core/time.h"
-//#include "./core/pixels.h"
-//#include "./core/memory.h"
-//#include "./core/controls.h"
-//#include "./scene/scene.h"
-//#include "./scene/box.h"
-//#include "./scene/grid.h"
-//#include "./scene/curve.h"
-//#include "./viewport/viewport.h"
+#include "./core/base.h"
+#include "./core/time.h"
+#include "./core/pixels.h"
+#include "./core/memory.h"
+#include "./core/controls.h"
 
 typedef struct AppCallbacks {
     void (*windowRedraw)();

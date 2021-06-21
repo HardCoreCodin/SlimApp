@@ -1,6 +1,6 @@
-#include "../app.h"
+#include "../SlimApp/app.h"
 // Or using the single-header file:
-// #include "../SlimApp.h"
+//#include "../SlimApp.h"
 
 // This is the entry point. It's the
 // only function required to be defined

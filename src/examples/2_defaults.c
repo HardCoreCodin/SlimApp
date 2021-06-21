@@ -1,6 +1,6 @@
-#include "../app.h"
+#include "../SlimApp/app.h"
 // Or using the single-header file:
-// #include "../SlimApp.h"
+//#include "../SlimApp.h"
 
 void initApp(Defaults *defaults) {
     // Some initial defaults can be overridden 

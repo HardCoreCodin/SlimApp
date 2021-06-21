@@ -1,7 +1,7 @@
-#include "../app.h"
-#include "../text.h"
+#include "../SlimApp/app.h"
+#include "../SlimApp/core/text.h"
 // Or using the single-header file:
-// #include "../SlimApp.h"
+//#include "../SlimApp.h"
 
 void showTheAnswer() {
     // Clear the window content to black:
