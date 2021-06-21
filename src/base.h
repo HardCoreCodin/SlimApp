@@ -1,5 +1,42 @@
 #pragma once
 
+#if defined(__clang__)
+    #define COMPILER_CLANG 1
+    #define COMPILER_CLANG_OR_GCC 1
+#elif defined(__GNUC__) || defined(__GNUG__)
+    #define COMPILER_GCC 1
+    #define COMPILER_CLANG_OR_GCC 1
+#elif defined(_MSC_VER)
+    #define COMPILER_MSVC 1
+#endif
+
+#ifndef NDEBUG
+    #define INLINE
+#elif defined(COMPILER_MSVC)
+    #define INLINE inline __forceinline
+#elif defined(COMPILER_CLANG_OR_GCC)
+    #define INLINE inline __attribute__((always_inline))
+#else
+    #define INLINE inline
+#endif
+
+#ifdef COMPILER_CLANG
+    #define ENABLE_FP_CONTRACT \
+        _Pragma("clang diagnostic push") \
+        _Pragma("clang diagnostic ignored \"-Wunknown-pragmas\"") \
+        _Pragma("STDC FP_CONTRACT ON") \
+        _Pragma("clang diagnostic pop")
+#else
+    #define ENABLE_FP_CONTRACT
+#endif
+
+#ifdef FP_FAST_FMAF
+    #define fast_mul_add(a, b, c) fmaf(a, b, c)
+#else
+    ENABLE_FP_CONTRACT
+    #define fast_mul_add(a, b, c) ((a) * (b) + (c))
+#endif
+
 #ifdef __cplusplus
     #define null nullptr
 #else
@@ -30,10 +67,11 @@ typedef void (*CallbackWithBool)(bool on);
 typedef void (*CallbackWithCharPtr)(char* str);
 
 #define MAX_COLOR_VALUE 0xFF
+
 typedef struct vec2  { f32 x, y; } vec2;
 typedef struct vec2i { i32 x, y; } vec2i;
-typedef struct RGBA  { u8 B, G, R, A; } RGBA;
-typedef struct Rect  { vec2i min, max; } Rect;
+typedef struct Rect { vec2i min, max; } Rect;
+typedef struct RGBA { u8 B, G, R, A; } RGBA;
 typedef union  Pixel { RGBA color; u32 value; } Pixel;
 
 void swap(i32 *a, i32 *b) {
@@ -50,7 +88,7 @@ void subRange(i32 from, i32 to, i32 end, i32 start, i32 *first, i32 *last) {
     *last  = (*last < end ? *last : end) - 1;
 }
 
-inline bool inRange(i32 value, i32 end, i32 start) {
+INLINE bool inRange(i32 value, i32 end, i32 start) {
     return value >= start && value < end;
 }
 
@@ -126,7 +164,6 @@ RGBA Color(enum ColorID color_id) {
     return color;
 }
 
-
 typedef struct NumberStringBuffer {
     char _buffer[12];
     char *string;
@@ -150,7 +187,6 @@ void printNumberIntoString(i32 number, NumberStringBuffer *number_string) {
         for (u8 i = 0; i < 11; i++) {
             temp = number;
             number /= 10;
-            number_string->string--;
             number_string->digit_count++;
             *buffer-- = (char)('0' + temp - number * 10);
             if (!number) {
@@ -162,10 +198,11 @@ void printNumberIntoString(i32 number, NumberStringBuffer *number_string) {
 
                 break;
             }
+            number_string->string--;
         }
     } else {
         buffer[11] = '0';
         number_string->digit_count = 1;
-        number_string->string = buffer + 10;
+        number_string->string = buffer + 11;
     }
 }

@@ -1,7 +1,7 @@
 #include "../app.h"
 #include "../shapes.h"
 // Or using the single-header file:
-// #include "../SlimApp.h"
+//#include "../SlimApp.h"
 
 typedef struct NavigationKeys { u8 left, right, up, down; } NavigationKeys;
 typedef struct Player { f32 size, speed; vec2 pos;} Player;

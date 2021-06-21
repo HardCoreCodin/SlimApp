@@ -88,20 +88,20 @@ void drawMouseDoubleClickArea(PixelGrid *canvas, Mouse *mouse) {
 }
 
 void drawMouseCoords(PixelGrid *canvas, Mouse *mouse) {
-    drawText(canvas, Color(White), "X", 350, 7);
-    drawText(canvas, Color(White), "Y", 400, 7);
+    drawText(canvas, Color(White), "X", 340, 7);
+    drawText(canvas, Color(White), "Y", 390, 7);
 
-    drawText(canvas, Color(White),"  Cursor:", 240, 20);
-    drawText(canvas, Color(Grey ),"RawInput:", 240, 32);
+    drawText(canvas, Color(White),"  Cursor:", 230, 20);
+    drawText(canvas, Color(Grey ),"RawInput:", 230, 32);
 
-    drawText(canvas, Color(Blue),"LMB Down:", 240, 70);
-    drawText(canvas, Color(Cyan),"LMB   Up:", 240, 90);
+    drawText(canvas, Color(Blue),"LMB Down:", 230, 70);
+    drawText(canvas, Color(Cyan),"LMB   Up:", 230, 90);
 
-    drawText(canvas, Color(Green ),"MMB Down:", 240, 130);
-    drawText(canvas, Color(Yellow),"MMB   Up:", 240, 150);
+    drawText(canvas, Color(Green ),"MMB Down:", 230, 130);
+    drawText(canvas, Color(Yellow),"MMB   Up:", 230, 150);
 
-    drawText(canvas, Color(Red    ),"RMB Down:", 240, 190);
-    drawText(canvas, Color(Magenta),"RMB   Up:", 240, 210);
+    drawText(canvas, Color(Red    ),"RMB Down:", 230, 190);
+    drawText(canvas, Color(Magenta),"RMB   Up:", 230, 210);
 
     // Draw Cursor position coordinates:
     drawNumber(canvas, Color(White), mouse->pos.x, 350, 20);

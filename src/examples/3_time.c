@@ -21,5 +21,6 @@ void initApp(Defaults *defaults) {
     // 'app' is a global pointer to the application instance.
     // It is the only global variable in the this library.
     app->on.windowRedraw = timer;
+    defaults->title = "0";
 }
 

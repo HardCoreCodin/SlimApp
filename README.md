@@ -1,6 +1,6 @@
 # SlimApp
 
-A minimalist platform-agnostic app layer for desktop apps written in plain C.<br>
+A minimalist platform-agnostic app layer for writing graphical applications.<br>
 A bare-bone application executable on Windows measures at around 13 KB(!)<br>
 Can be complied in either C or C++ (only uses the subset of C that C++ also supports).<br>
 Available as either a single header file, or a directory of headers (a "unity build" setup).
@@ -8,7 +8,7 @@ Available as either a single header file, or a directory of headers (a "unity bu
 Architecture: <br>
 -
 The platform layer only uses operating-system header(s).<br>
-The appication layer has no dependencies - not even on the platform layer or any standard library.<br>
+The application layer itself has no dependencies (not even on the platform layer or any standard library).<br>
 It is just a library that the platform layer uses (has no knowledge of the platform).<br>
 
 More details on this architecture [here](https://youtu.be/Ev_TeQmus68).

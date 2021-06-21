@@ -14,7 +14,7 @@ void showTheAnswer() {
                100, 50);
     drawNumber(canvas, Color(Red  ),
                42,
-               260, 50);
+               270, 50);
 }
 
 void initApp(Defaults *defaults) {

@@ -1,5 +1,42 @@
 #pragma once
 
+#if defined(__clang__)
+#define COMPILER_CLANG 1
+    #define COMPILER_CLANG_OR_GCC 1
+#elif defined(__GNUC__) || defined(__GNUG__)
+#define COMPILER_GCC 1
+    #define COMPILER_CLANG_OR_GCC 1
+#elif defined(_MSC_VER)
+#define COMPILER_MSVC 1
+#endif
+
+#ifndef NDEBUG
+#define INLINE
+#elif defined(COMPILER_MSVC)
+#define INLINE inline __forceinline
+#elif defined(COMPILER_CLANG_OR_GCC)
+    #define INLINE inline __attribute__((always_inline))
+#else
+    #define INLINE inline
+#endif
+
+#ifdef COMPILER_CLANG
+#define ENABLE_FP_CONTRACT \
+        _Pragma("clang diagnostic push") \
+        _Pragma("clang diagnostic ignored \"-Wunknown-pragmas\"") \
+        _Pragma("STDC FP_CONTRACT ON") \
+        _Pragma("clang diagnostic pop")
+#else
+#define ENABLE_FP_CONTRACT
+#endif
+
+#ifdef FP_FAST_FMAF
+#define fast_mul_add(a, b, c) fmaf(a, b, c)
+#else
+ENABLE_FP_CONTRACT
+#define fast_mul_add(a, b, c) ((a) * (b) + (c))
+#endif
+
 #ifdef __cplusplus
 #define null nullptr
 #else
@@ -30,10 +67,11 @@ typedef void (*CallbackWithBool)(bool on);
 typedef void (*CallbackWithCharPtr)(char* str);
 
 #define MAX_COLOR_VALUE 0xFF
+
 typedef struct vec2  { f32 x, y; } vec2;
 typedef struct vec2i { i32 x, y; } vec2i;
-typedef struct RGBA  { u8 B, G, R, A; } RGBA;
-typedef struct Rect  { vec2i min, max; } Rect;
+typedef struct Rect { vec2i min, max; } Rect;
+typedef struct RGBA { u8 B, G, R, A; } RGBA;
 typedef union  Pixel { RGBA color; u32 value; } Pixel;
 
 void swap(i32 *a, i32 *b) {
@@ -50,7 +88,7 @@ void subRange(i32 from, i32 to, i32 end, i32 start, i32 *first, i32 *last) {
     *last  = (*last < end ? *last : end) - 1;
 }
 
-inline bool inRange(i32 value, i32 end, i32 start) {
+INLINE bool inRange(i32 value, i32 end, i32 start) {
     return value >= start && value < end;
 }
 
@@ -126,7 +164,6 @@ RGBA Color(enum ColorID color_id) {
     return color;
 }
 
-
 typedef struct NumberStringBuffer {
     char _buffer[12];
     char *string;
@@ -150,7 +187,6 @@ void printNumberIntoString(i32 number, NumberStringBuffer *number_string) {
         for (u8 i = 0; i < 11; i++) {
             temp = number;
             number /= 10;
-            number_string->string--;
             number_string->digit_count++;
             *buffer-- = (char)('0' + temp - number * 10);
             if (!number) {
@@ -162,11 +198,12 @@ void printNumberIntoString(i32 number, NumberStringBuffer *number_string) {
 
                 break;
             }
+            number_string->string--;
         }
     } else {
         buffer[11] = '0';
         number_string->digit_count = 1;
-        number_string->string = buffer + 10;
+        number_string->string = buffer + 11;
     }
 }
 
@@ -279,17 +316,18 @@ void averageTimer(Timer *timer) {
     timer->accumulated_ticks = timer->accumulated_frame_count = 0;
 }
 
-inline void startFrameTimer(Timer *timer) {
+INLINE void startFrameTimer(Timer *timer) {
     timer->ticks_after = timer->ticks_before;
     timer->ticks_before = timer->getTicks();
     timer->ticks_diff = timer->ticks_before - timer->ticks_after;
     timer->delta_time = (f32)(timer->ticks_diff * timer->ticks->per_tick.seconds);
 }
 
-inline void endFrameTimer(Timer *timer) {
+INLINE void endFrameTimer(Timer *timer) {
     timer->ticks_after = timer->getTicks();
     accumulateTimer(timer);
-    if (timer->accumulated_ticks >= timer->ticks->per_tick.seconds) averageTimer(timer);
+    if (timer->accumulated_ticks >= timer->ticks->per_second / 4)
+        averageTimer(timer);
 }
 
 
@@ -365,7 +403,7 @@ void* allocateMemory(Memory *memory, u64 size) {
 }
 
 typedef struct MouseButton {
-    vec2i down_pos, up_pos;
+    vec2i down_pos, up_pos, double_click_pos;
     bool is_pressed, is_handled;
 } MouseButton;
 
@@ -373,20 +411,33 @@ typedef struct Mouse {
     MouseButton middle_button, right_button, left_button;
     vec2i pos, pos_raw_diff, movement;
     f32 wheel_scroll_amount;
-    bool moved, is_captured, double_clicked, wheel_scrolled;
+    bool moved, is_captured,
+            move_handled,
+            double_clicked,
+            double_clicked_handled,
+            wheel_scrolled,
+            wheel_scroll_handled,
+            raw_movement_handled;
 } Mouse;
 
 void initMouse(Mouse *mouse) {
-    mouse->moved = false;
     mouse->is_captured = false;
-    mouse->double_clicked = false;
-    mouse->wheel_scrolled= false;
 
+    mouse->moved = false;
+    mouse->move_handled = false;
+
+    mouse->double_clicked = false;
+    mouse->double_clicked_handled = false;
+
+    mouse->wheel_scrolled = false;
     mouse->wheel_scroll_amount = 0;
+    mouse->wheel_scroll_handled = false;
+
     mouse->pos.x = 0;
     mouse->pos.y = 0;
     mouse->pos_raw_diff.x = 0;
     mouse->pos_raw_diff.y = 0;
+    mouse->raw_movement_handled = false;
 
     mouse->middle_button.is_pressed = false;
     mouse->middle_button.is_handled = false;
@@ -404,6 +455,27 @@ void initMouse(Mouse *mouse) {
     mouse->left_button.down_pos.x = 0;
 }
 
+void resetMouseChanges(Mouse *mouse) {
+    if (mouse->move_handled) {
+        mouse->move_handled = false;
+        mouse->moved = false;
+    }
+    if (mouse->double_clicked_handled) {
+        mouse->double_clicked_handled = false;
+        mouse->double_clicked = false;
+    }
+    if (mouse->raw_movement_handled) {
+        mouse->raw_movement_handled = false;
+        mouse->pos_raw_diff.x = 0;
+        mouse->pos_raw_diff.y = 0;
+    }
+    if (mouse->wheel_scroll_handled) {
+        mouse->wheel_scroll_handled = false;
+        mouse->wheel_scrolled = false;
+        mouse->wheel_scroll_amount = 0;
+    }
+}
+
 typedef struct KeyMap      { u8 ctrl, alt, shift, space, tab; } KeyMap;
 typedef struct IsPressed { bool ctrl, alt, shift, space, tab; } IsPressed;
 typedef struct Controls {
@@ -415,6 +487,7 @@ typedef struct Controls {
 void initControls(Controls *controls) {
     initMouse(&controls->mouse);
 }
+
 
 void drawHLine2D(PixelGrid *canvas, RGBA color, i32 from, i32 to, i32 at) {
     if (!inRange(at, canvas->dimensions.height, 0)) return;
@@ -852,6 +925,7 @@ typedef struct AppCallbacks {
     void (*keyChanged)(  u8 key, bool pressed);
     void (*mouseButtonUp)(  MouseButton *mouse_button);
     void (*mouseButtonDown)(MouseButton *mouse_button);
+    void (*mouseButtonDoubleClicked)(MouseButton *mouse_button);
     void (*mouseWheelScrolled)(f32 amount);
     void (*mousePositionSet)(i32 x, i32 y);
     void (*mouseMovementSet)(i32 x, i32 y);
@@ -879,6 +953,7 @@ typedef struct Platform {
 typedef struct Defaults {
     char* title;
     u16 width, height;
+    u64 additional_memory_size;
 } Defaults;
 
 typedef struct App {
@@ -910,11 +985,11 @@ void _windowResize(u16 width, u16 height) {
 }
 
 void _keyChanged(u8 key, bool pressed) {
-    if (key == app->controls.key_map.ctrl) app->controls.is_pressed.ctrl  = pressed;
-    else if (key == app->controls.key_map.alt) app->controls.is_pressed.alt   = pressed;
+    if (key == app->controls.key_map.ctrl)  app->controls.is_pressed.ctrl  = pressed;
+    else if (key == app->controls.key_map.alt)   app->controls.is_pressed.alt   = pressed;
     else if (key == app->controls.key_map.shift) app->controls.is_pressed.shift = pressed;
     else if (key == app->controls.key_map.space) app->controls.is_pressed.space = pressed;
-    else if (key == app->controls.key_map.tab) app->controls.is_pressed.tab   = pressed;
+    else if (key == app->controls.key_map.tab)   app->controls.is_pressed.tab   = pressed;
 
     if (app->on.keyChanged) app->on.keyChanged(key, pressed);
 }
@@ -937,6 +1012,13 @@ void _mouseButtonUp(MouseButton *mouse_button, i32 x, i32 y) {
     mouse_button->up_pos.y = y;
 
     if (app->on.mouseButtonUp) app->on.mouseButtonUp(mouse_button);
+}
+
+void _mouseButtonDoubleClicked(MouseButton *mouse_button, i32 x, i32 y) {
+    app->controls.mouse.double_clicked = true;
+    mouse_button->double_click_pos.x = x;
+    mouse_button->double_click_pos.y = y;
+    if (app->on.mouseButtonDoubleClicked) app->on.mouseButtonDoubleClicked(mouse_button);
 }
 
 void _mouseWheelScrolled(f32 amount) {
@@ -991,10 +1073,6 @@ void* allocateAppMemory(u64 size) {
 }
 
 void _initApp(Defaults *defaults, void* window_content_memory) {
-    defaults->title = "";
-    defaults->width = 480;
-    defaults->height = 360;
-
     app->is_running = true;
     app->user_data = null;
     app->memory.address = null;
@@ -1003,6 +1081,7 @@ void _initApp(Defaults *defaults, void* window_content_memory) {
     app->on.keyChanged = null;
     app->on.mouseButtonUp = null;
     app->on.mouseButtonDown = null;
+    app->on.mouseButtonDoubleClicked = null;
     app->on.mouseWheelScrolled = null;
     app->on.mousePositionSet = null;
     app->on.mouseMovementSet = null;
@@ -1011,7 +1090,323 @@ void _initApp(Defaults *defaults, void* window_content_memory) {
     initTime(&app->time, app->platform.getTicks, app->platform.ticks_per_second);
     initControls(&app->controls);
     initPixelGrid(&app->window_content, (Pixel*)window_content_memory);
+
+    defaults->title = "";
+    defaults->width = 480;
+    defaults->height = 360;
+    defaults->additional_memory_size = 0;
     initApp(defaults);
 }
 
-#include "./platforms/win32.h"
+#ifdef __linux__
+    //linux code goes here
+#elif _WIN32
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
+#ifndef NDEBUG
+#include <tchar.h>
+#include <stdio.h>
+#include <strsafe.h>
+
+void DisplayError(LPTSTR lpszFunction) {
+    LPVOID lpMsgBuf;
+    LPVOID lpDisplayBuf;
+    unsigned int last_error = GetLastError();
+
+    FormatMessage(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER |
+            FORMAT_MESSAGE_FROM_SYSTEM |
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL, last_error,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPTSTR) &lpMsgBuf, 0, NULL);
+
+    lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
+
+    if (FAILED( StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR),
+                                TEXT("%s failed with error code %d as follows:\n%s"), lpszFunction, last_error, lpMsgBuf)))
+        printf("FATAL ERROR: Unable to output error code.\n");
+
+    _tprintf(TEXT("ERROR: %s\n"), (LPCTSTR)lpDisplayBuf);
+
+    LocalFree(lpMsgBuf);
+    LocalFree(lpDisplayBuf);
+}
+#endif
+
+#define GET_X_LPARAM(lp)                        ((int)(short)LOWORD(lp))
+#define GET_Y_LPARAM(lp)                        ((int)(short)HIWORD(lp))
+
+WNDCLASSA window_class;
+HWND window;
+HDC win_dc;
+BITMAPINFO info;
+RECT win_rect;
+RAWINPUT raw_inputs;
+HRAWINPUT raw_input_handle;
+RAWINPUTDEVICE raw_input_device;
+UINT raw_input_size;
+PUINT raw_input_size_ptr = (PUINT)(&raw_input_size);
+UINT raw_input_header_size = sizeof(RAWINPUTHEADER);
+
+u64 Win32_ticksPerSecond;
+LARGE_INTEGER performance_counter;
+
+void Win32_setWindowTitle(char* str) { SetWindowTextA(window, str); }
+void Win32_setCursorVisibility(bool on) { ShowCursor(on); }
+void Win32_setWindowCapture(bool on) { if (on) SetCapture(window); else ReleaseCapture(); }
+u64 Win32_getTicks() {
+    QueryPerformanceCounter(&performance_counter);
+    return (u64)performance_counter.QuadPart;
+}
+void* Win32_getMemory(u64 size) {
+    return VirtualAlloc((LPVOID)MEMORY_BASE, size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+}
+
+inline UINT getRawInput(LPVOID data) {
+    return GetRawInputData(raw_input_handle, RID_INPUT, data, raw_input_size_ptr, raw_input_header_size);
+}
+inline bool hasRawInput() {
+    return getRawInput(0) == 0 && raw_input_size != 0;
+}
+inline bool hasRawMouseInput(LPARAM lParam) {
+    raw_input_handle = (HRAWINPUT)(lParam);
+    return (
+            hasRawInput() &&
+            getRawInput((LPVOID)&raw_inputs) == raw_input_size &&
+            raw_inputs.header.dwType == RIM_TYPEMOUSE
+    );
+}
+
+void Win32_closeFile(void *handle) { CloseHandle(handle); }
+void* Win32_openFileForReading(const char* path) {
+    HANDLE handle = CreateFile(path,           // file to open
+                               GENERIC_READ,          // open for reading
+                               FILE_SHARE_READ,       // share for reading
+                               NULL,                  // default security
+                               OPEN_EXISTING,         // existing file only
+                               FILE_ATTRIBUTE_NORMAL, // normal file
+                               NULL);                 // no attr. template
+#ifndef NDEBUG
+    if (handle == INVALID_HANDLE_VALUE) {
+        DisplayError(TEXT("CreateFile"));
+        _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for read.\n"), path);
+        return NULL;
+    }
+#endif
+    return handle;
+}
+void* Win32_openFileForWriting(const char* path) {
+    HANDLE handle = CreateFile(path,           // file to open
+                               GENERIC_WRITE,          // open for writing
+                               0,                      // do not share
+                               NULL,                   // default security
+                               CREATE_NEW,             // create new file only
+                               FILE_ATTRIBUTE_NORMAL,  // normal file
+                               NULL);
+#ifndef NDEBUG
+    if (handle == INVALID_HANDLE_VALUE) {
+        DisplayError(TEXT("CreateFile"));
+        _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for read.\n"), path);
+        return NULL;
+    }
+#endif
+    return handle;
+}
+bool Win32_readFromFile(LPVOID out, DWORD size, HANDLE handle) {
+    DWORD bytes_read = 0;
+    BOOL result = ReadFile(handle, out, size, &bytes_read, NULL);
+#ifndef NDEBUG
+    if (result == FALSE) {
+        DisplayError(TEXT("ReadFile"));
+        printf("Terminal failure: Unable to read from file.\n GetLastError=%08x\n", (unsigned int)GetLastError());
+        CloseHandle(handle);
+    }
+#endif
+    return result != FALSE;
+}
+
+bool Win32_writeToFile(LPVOID out, DWORD size, HANDLE handle) {
+    DWORD bytes_written = 0;
+    BOOL result = WriteFile(handle, out, size, &bytes_written, NULL);
+#ifndef NDEBUG
+    if (result == FALSE) {
+        DisplayError(TEXT("ReadFile"));
+        printf("Terminal failure: Unable to read from file.\n GetLastError=%08x\n", (unsigned int)GetLastError());
+        CloseHandle(handle);
+    }
+#endif
+    return result != FALSE;
+}
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {
+        case WM_DESTROY:
+            app->is_running = false;
+            PostQuitMessage(0);
+            break;
+
+        case WM_SIZE:
+            GetClientRect(window, &win_rect);
+
+            info.bmiHeader.biWidth = win_rect.right - win_rect.left;
+            info.bmiHeader.biHeight = win_rect.top - win_rect.bottom;
+
+            _windowResize((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
+
+            break;
+
+        case WM_PAINT:
+            SetDIBitsToDevice(win_dc,
+                              0, 0, app->window_content.dimensions.width, app->window_content.dimensions.height,
+                              0, 0, 0, app->window_content.dimensions.height,
+                              (u32*)app->window_content.pixels, &info, DIB_RGB_COLORS);
+
+            ValidateRgn(window, null);
+            break;
+
+        case WM_SYSKEYDOWN:
+        case WM_KEYDOWN:
+            _keyChanged((u32)wParam, true);
+            break;
+
+        case WM_SYSKEYUP:
+        case WM_KEYUP: _keyChanged((u32)wParam, false); break;
+
+        case WM_MBUTTONUP:     _mouseButtonUp(  &app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_MBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_LBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.left_button,   GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_LBUTTONUP  :   _mouseButtonUp(  &app->controls.mouse.left_button,   GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_RBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.right_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_RBUTTONUP:     _mouseButtonUp(  &app->controls.mouse.right_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_LBUTTONDBLCLK: _mouseButtonDoubleClicked(&app->controls.mouse.left_button,   GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_RBUTTONDBLCLK: _mouseButtonDoubleClicked(&app->controls.mouse.right_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_MBUTTONDBLCLK: _mouseButtonDoubleClicked(&app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_MOUSEWHEEL:    _mouseWheelScrolled((f32)(GET_WHEEL_DELTA_WPARAM(wParam)) / (f32)(WHEEL_DELTA)); break;
+        case WM_MOUSEMOVE:
+            _mouseMovementSet(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            _mousePositionSet(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            break;
+
+        case WM_INPUT:
+            if ((hasRawMouseInput(lParam)) && (
+                    raw_inputs.data.mouse.lLastX != 0 ||
+                    raw_inputs.data.mouse.lLastY != 0))
+                _mouseRawMovementSet(
+                        raw_inputs.data.mouse.lLastX,
+                        raw_inputs.data.mouse.lLastY
+                );
+
+        default:
+            return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+
+    return 0;
+}
+
+int APIENTRY WinMain(HINSTANCE hInstance,
+                     HINSTANCE hPrevInstance,
+                     LPSTR     lpCmdLine,
+                     int       nCmdShow) {
+
+    void* app_memory = GlobalAlloc(GPTR, sizeof(App));
+    if (!app_memory)
+        return -1;
+
+    app = (App*)app_memory;
+
+    void* window_content_memory = GlobalAlloc(GPTR, RENDER_SIZE);
+    if (!window_content_memory)
+        return -1;
+
+    LARGE_INTEGER performance_frequency;
+    QueryPerformanceFrequency(&performance_frequency);
+    Win32_ticksPerSecond = (u64)performance_frequency.QuadPart;
+
+    app->controls.key_map.space = VK_SPACE;
+    app->controls.key_map.shift = VK_SHIFT;
+    app->controls.key_map.ctrl  = VK_CONTROL;
+    app->controls.key_map.alt   = VK_MENU;
+    app->controls.key_map.tab   = VK_TAB;
+
+    app->platform.ticks_per_second    = Win32_ticksPerSecond;
+    app->platform.getTicks            = Win32_getTicks;
+    app->platform.getMemory           = Win32_getMemory;
+    app->platform.setWindowTitle      = Win32_setWindowTitle;
+    app->platform.setWindowCapture    = Win32_setWindowCapture;
+    app->platform.setCursorVisibility = Win32_setCursorVisibility;
+    app->platform.closeFile           = Win32_closeFile;
+    app->platform.openFileForReading  = Win32_openFileForReading;
+    app->platform.openFileForWriting  = Win32_openFileForWriting;
+    app->platform.readFromFile        = Win32_readFromFile;
+    app->platform.writeToFile         = Win32_writeToFile;
+
+    Defaults defaults;
+    _initApp(&defaults, window_content_memory);
+
+    info.bmiHeader.biSize        = sizeof(info.bmiHeader);
+    info.bmiHeader.biCompression = BI_RGB;
+    info.bmiHeader.biBitCount    = 32;
+    info.bmiHeader.biPlanes      = 1;
+
+    window_class.lpszClassName  = "RnDer";
+    window_class.hInstance      = hInstance;
+    window_class.lpfnWndProc    = WndProc;
+    window_class.style          = CS_OWNDC|CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;
+    window_class.hCursor        = LoadCursorA(null, IDC_ARROW);
+
+    if (!RegisterClassA(&window_class)) return -1;
+
+    win_rect.top = 0;
+    win_rect.left = 0;
+    win_rect.right  = defaults.width;
+    win_rect.bottom = defaults.height;
+    AdjustWindowRect(&win_rect, WS_OVERLAPPEDWINDOW, false);
+
+    window = CreateWindowA(
+            window_class.lpszClassName,
+            defaults.title,
+            WS_OVERLAPPEDWINDOW,
+
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            win_rect.right - win_rect.left,
+            win_rect.bottom - win_rect.top,
+
+            null,
+            null,
+            hInstance,
+            null
+    );
+    if (!window)
+        return -1;
+
+    raw_input_device.usUsagePage = 0x01;
+    raw_input_device.usUsage = 0x02;
+    if (!RegisterRawInputDevices(&raw_input_device, 1, sizeof(raw_input_device)))
+        return -1;
+
+    win_dc = GetDC(window);
+
+    SetICMMode(win_dc, ICM_OFF);
+
+
+
+    ShowWindow(window, nCmdShow);
+
+    MSG message;
+    while (app->is_running) {
+        while (PeekMessageA(&message, null, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&message);
+            DispatchMessageA(&message);
+        }
+        _windowRedraw();
+        InvalidateRgn(window, null, false);
+    }
+
+    return 0;
+}
+
+#endif

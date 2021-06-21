@@ -9,5 +9,3 @@ void initApp(Defaults *defaults) {
     defaults->width  = 300;
     defaults->height = 60;
 }
-
-

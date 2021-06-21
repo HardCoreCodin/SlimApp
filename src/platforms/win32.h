@@ -9,20 +9,20 @@
 void DisplayError(LPTSTR lpszFunction) {
     LPVOID lpMsgBuf;
     LPVOID lpDisplayBuf;
-    DWORD dw = GetLastError();
+    unsigned int last_error = GetLastError();
 
     FormatMessage(
             FORMAT_MESSAGE_ALLOCATE_BUFFER |
             FORMAT_MESSAGE_FROM_SYSTEM |
             FORMAT_MESSAGE_IGNORE_INSERTS,
-            NULL, dw,
+            NULL, last_error,
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
             (LPTSTR) &lpMsgBuf, 0, NULL);
 
     lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
 
     if (FAILED( StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-                                TEXT("%s failed with error code %d as follows:\n%s"), lpszFunction, dw, lpMsgBuf)))
+                                TEXT("%s failed with error code %d as follows:\n%s"), lpszFunction, last_error, lpMsgBuf)))
         printf("FATAL ERROR: Unable to output error code.\n");
 
     _tprintf(TEXT("ERROR: %s\n"), (LPCTSTR)lpDisplayBuf);
@@ -70,9 +70,9 @@ inline bool hasRawInput() {
 inline bool hasRawMouseInput(LPARAM lParam) {
     raw_input_handle = (HRAWINPUT)(lParam);
     return (
-        hasRawInput() &&
-        getRawInput((LPVOID)&raw_inputs) == raw_input_size &&
-        raw_inputs.header.dwType == RIM_TYPEMOUSE
+            hasRawInput() &&
+            getRawInput((LPVOID)&raw_inputs) == raw_input_size &&
+            raw_inputs.header.dwType == RIM_TYPEMOUSE
     );
 }
 
@@ -117,7 +117,7 @@ bool Win32_readFromFile(LPVOID out, DWORD size, HANDLE handle) {
 #ifndef NDEBUG
     if (result == FALSE) {
         DisplayError(TEXT("ReadFile"));
-        printf("Terminal failure: Unable to read from file.\n GetLastError=%08x\n", GetLastError());
+        printf("Terminal failure: Unable to read from file.\n GetLastError=%08x\n", (unsigned int)GetLastError());
         CloseHandle(handle);
     }
 #endif
@@ -130,7 +130,7 @@ bool Win32_writeToFile(LPVOID out, DWORD size, HANDLE handle) {
 #ifndef NDEBUG
     if (result == FALSE) {
         DisplayError(TEXT("ReadFile"));
-        printf("Terminal failure: Unable to read from file.\n GetLastError=%08x\n", GetLastError());
+        printf("Terminal failure: Unable to read from file.\n GetLastError=%08x\n", (unsigned int)GetLastError());
         CloseHandle(handle);
     }
 #endif
@@ -169,31 +169,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             break;
 
         case WM_SYSKEYUP:
-        case WM_KEYUP:
-            _keyChanged((u32)wParam, false);
-            break;
+        case WM_KEYUP: _keyChanged((u32)wParam, false); break;
 
-        case WM_MBUTTONUP:
-            _mouseButtonUp(  &app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            break;
-
-        case WM_MBUTTONDOWN:
-            _mouseButtonDown(&app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            break;
-
-        case WM_LBUTTONDOWN: _mouseButtonDown(&app->controls.mouse.left_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_LBUTTONUP  : _mouseButtonUp(  &app->controls.mouse.left_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_RBUTTONDOWN: _mouseButtonDown(&app->controls.mouse.right_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_RBUTTONUP:   _mouseButtonUp(  &app->controls.mouse.right_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-
-        case WM_LBUTTONDBLCLK:
-            app->controls.mouse.double_clicked = true;
-            break;
-
-        case WM_MOUSEWHEEL:
-            _mouseWheelScrolled((f32)(GET_WHEEL_DELTA_WPARAM(wParam)) / (f32)(WHEEL_DELTA));
-            break;
-
+        case WM_MBUTTONUP:     _mouseButtonUp(  &app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_MBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_LBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.left_button,   GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_LBUTTONUP  :   _mouseButtonUp(  &app->controls.mouse.left_button,   GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_RBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.right_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_RBUTTONUP:     _mouseButtonUp(  &app->controls.mouse.right_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_LBUTTONDBLCLK: _mouseButtonDoubleClicked(&app->controls.mouse.left_button,   GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_RBUTTONDBLCLK: _mouseButtonDoubleClicked(&app->controls.mouse.right_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_MBUTTONDBLCLK: _mouseButtonDoubleClicked(&app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
+        case WM_MOUSEWHEEL:    _mouseWheelScrolled((f32)(GET_WHEEL_DELTA_WPARAM(wParam)) / (f32)(WHEEL_DELTA)); break;
         case WM_MOUSEMOVE:
             _mouseMovementSet(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
             _mousePositionSet(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
@@ -201,8 +188,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
         case WM_INPUT:
             if ((hasRawMouseInput(lParam)) && (
-                raw_inputs.data.mouse.lLastX != 0 ||
-                raw_inputs.data.mouse.lLastY != 0))
+                    raw_inputs.data.mouse.lLastX != 0 ||
+                    raw_inputs.data.mouse.lLastY != 0))
                 _mouseRawMovementSet(
                         raw_inputs.data.mouse.lLastX,
                         raw_inputs.data.mouse.lLastY
@@ -315,5 +302,5 @@ int APIENTRY WinMain(HINSTANCE hInstance,
         InvalidateRgn(window, null, false);
     }
 
-    return 0;// (int)message.wParam;
+    return 0;
 }
