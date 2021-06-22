@@ -1,9 +1,10 @@
 # SlimApp
 
-Minimalist and platform-agnostic application for writing graphical applications.<br>
-A bare-bone application executable on Windows measures at around 13 KB(!)<br>
+A minimalist(*) and platform-agnostic application layer for writing graphical applications.<br>
 Available as either a single header file or a directory of headers (a "unity build" setup).<br>
 Can be complied in either C or C++.<br>
+
+<i>(*A bare-bone application executable on Windows measures at around 13 KB(!))<br></i>
 
 Architecture:
 -
