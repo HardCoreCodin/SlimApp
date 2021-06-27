@@ -164,16 +164,55 @@ RGBA Color(enum ColorID color_id) {
     return color;
 }
 
-typedef struct NumberStringBuffer {
-    char _buffer[12];
-    char *string;
-    u8 digit_count;
-} NumberStringBuffer;
+typedef struct String {
+    u32 length;
+    char *char_ptr;
+} String;
 
-void printNumberIntoString(i32 number, NumberStringBuffer *number_string) {
+void setString(String *string, char *char_ptr) {
+    string->char_ptr = char_ptr;
+    string->length = 0;
+    if (char_ptr)
+        while (char_ptr[string->length])
+            string->length++;
+}
+
+u32 getStringLength(char *string) {
+    char *char_ptr = string;
+    u32 length = 0;
+    if (char_ptr) while (char_ptr[length]) length++;
+    return length;
+}
+
+void copyToString(String *string, char* char_ptr, u32 offset) {
+    string->length = offset;
+    char *source_char = char_ptr;
+    char *string_char = string->char_ptr + offset;
+    while (source_char[0]) {
+        *string_char = *source_char;
+        string_char++;
+        source_char++;
+        string->length++;
+    }
+    *string_char = 0;
+}
+
+typedef struct NumberString {
+    char _buffer[12];
+    String string;
+} NumberString;
+
+void initNumberString(NumberString *number_string) {
+    number_string->string.char_ptr = number_string->_buffer;
+    number_string->string.length = 1;
+    number_string->_buffer[11] = 0;
+    for (u8 i = 0; i < 11; i++)
+        number_string->_buffer[i] = ' ';
+}
+
+void printNumberIntoString(i32 number, NumberString *number_string) {
+    initNumberString(number_string);
     char *buffer = number_string->_buffer;
-    buffer[11] = 0;
-    for (u8 i = 0; i < 11; i++) buffer[i] = ' ';
 
     bool is_negative = number < 0;
     if (is_negative) number = -number;
@@ -181,29 +220,29 @@ void printNumberIntoString(i32 number, NumberStringBuffer *number_string) {
     if (number) {
         u32 temp;
         buffer += 11;
-        number_string->string = buffer;
-        number_string->digit_count = 0;
+        number_string->string.char_ptr = buffer;
+        number_string->string.length = 0;
 
         for (u8 i = 0; i < 11; i++) {
             temp = number;
             number /= 10;
-            number_string->digit_count++;
+            number_string->string.length++;
             *buffer-- = (char)('0' + temp - number * 10);
             if (!number) {
                 if (is_negative) {
                     *buffer = '-';
-                    number_string->string--;
-                    number_string->digit_count++;
+                    number_string->string.char_ptr--;
+                    number_string->string.length++;
                 }
 
                 break;
             }
-            number_string->string--;
+            number_string->string.char_ptr--;
         }
     } else {
         buffer[11] = '0';
-        number_string->digit_count = 1;
-        number_string->string = buffer + 11;
+        number_string->string.length = 1;
+        number_string->string.char_ptr = buffer + 11;
     }
 }
 
@@ -571,8 +610,6 @@ void drawLine2D(PixelGrid *canvas, RGBA color, i32 x0, i32 y0, i32 x1, i32 y1) {
     i32 current1 = start1;
     i32 current2 = start2;
     while (current1 != end) {
-        current1 += inc1;
-
         if (inRange(index, canvas->dimensions.width_times_height, 0)) {
             if (is_steap) {
                 if (inRange(current1, height, 0) &&
@@ -587,6 +624,7 @@ void drawLine2D(PixelGrid *canvas, RGBA color, i32 x0, i32 y0, i32 x1, i32 y1) {
 
         index += index_inc1;
         error += error_inc;
+        current1 += inc1;
         if (error > threshold) {
             error -= error_dec;
             index += index_inc2;
@@ -914,9 +952,9 @@ void drawText(PixelGrid *canvas, RGBA color, char *str, i32 x, i32 y) {
 }
 
 void drawNumber(PixelGrid *canvas, RGBA color, i32 number, i32 x, i32 y) {
-    static NumberStringBuffer number_string;
+    static NumberString number_string;
     printNumberIntoString(number, &number_string);
-    drawText(canvas, color, number_string.string, x - number_string.digit_count * FONT_WIDTH, y);
+    drawText(canvas, color, number_string.string.char_ptr, x - number_string.string.length * FONT_WIDTH, y);
 }
 
 typedef struct AppCallbacks {
@@ -1119,9 +1157,9 @@ void DisplayError(LPTSTR lpszFunction) {
             FORMAT_MESSAGE_ALLOCATE_BUFFER |
             FORMAT_MESSAGE_FROM_SYSTEM |
             FORMAT_MESSAGE_IGNORE_INSERTS,
-            NULL, last_error,
+            null, last_error,
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            (LPTSTR) &lpMsgBuf, 0, NULL);
+            (LPTSTR) &lpMsgBuf, 0, null);
 
     lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
 
@@ -1129,7 +1167,7 @@ void DisplayError(LPTSTR lpszFunction) {
                                 TEXT("%s failed with error code %d as follows:\n%s"), lpszFunction, last_error, lpMsgBuf)))
         printf("FATAL ERROR: Unable to output error code.\n");
 
-    _tprintf(TEXT("ERROR: %s\n"), (LPCTSTR)lpDisplayBuf);
+    _tprintf(TEXT((LPTSTR)"ERROR: %s\n"), (LPCTSTR)lpDisplayBuf);
 
     LocalFree(lpMsgBuf);
     LocalFree(lpDisplayBuf);
@@ -1185,15 +1223,15 @@ void* Win32_openFileForReading(const char* path) {
     HANDLE handle = CreateFile(path,           // file to open
                                GENERIC_READ,          // open for reading
                                FILE_SHARE_READ,       // share for reading
-                               NULL,                  // default security
+                               null,                  // default security
                                OPEN_EXISTING,         // existing file only
                                FILE_ATTRIBUTE_NORMAL, // normal file
-                               NULL);                 // no attr. template
+                               null);                 // no attr. template
 #ifndef NDEBUG
     if (handle == INVALID_HANDLE_VALUE) {
-        DisplayError(TEXT("CreateFile"));
+        DisplayError(TEXT((LPTSTR)"CreateFile"));
         _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for read.\n"), path);
-        return NULL;
+        return null;
     }
 #endif
     return handle;
@@ -1202,25 +1240,25 @@ void* Win32_openFileForWriting(const char* path) {
     HANDLE handle = CreateFile(path,           // file to open
                                GENERIC_WRITE,          // open for writing
                                0,                      // do not share
-                               NULL,                   // default security
-                               CREATE_NEW,             // create new file only
+                               null,                   // default security
+                               OPEN_ALWAYS,            // create new or open existing
                                FILE_ATTRIBUTE_NORMAL,  // normal file
-                               NULL);
+                               null);
 #ifndef NDEBUG
     if (handle == INVALID_HANDLE_VALUE) {
-        DisplayError(TEXT("CreateFile"));
-        _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for read.\n"), path);
-        return NULL;
+        DisplayError(TEXT((LPTSTR)"CreateFile"));
+        _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for write.\n"), path);
+        return null;
     }
 #endif
     return handle;
 }
 bool Win32_readFromFile(LPVOID out, DWORD size, HANDLE handle) {
     DWORD bytes_read = 0;
-    BOOL result = ReadFile(handle, out, size, &bytes_read, NULL);
+    BOOL result = ReadFile(handle, out, size, &bytes_read, null);
 #ifndef NDEBUG
     if (result == FALSE) {
-        DisplayError(TEXT("ReadFile"));
+        DisplayError(TEXT((LPTSTR)"ReadFile"));
         printf("Terminal failure: Unable to read from file.\n GetLastError=%08x\n", (unsigned int)GetLastError());
         CloseHandle(handle);
     }
@@ -1230,11 +1268,11 @@ bool Win32_readFromFile(LPVOID out, DWORD size, HANDLE handle) {
 
 bool Win32_writeToFile(LPVOID out, DWORD size, HANDLE handle) {
     DWORD bytes_written = 0;
-    BOOL result = WriteFile(handle, out, size, &bytes_written, NULL);
+    BOOL result = WriteFile(handle, out, size, &bytes_written, null);
 #ifndef NDEBUG
     if (result == FALSE) {
-        DisplayError(TEXT("ReadFile"));
-        printf("Terminal failure: Unable to read from file.\n GetLastError=%08x\n", (unsigned int)GetLastError());
+        DisplayError(TEXT((LPTSTR)"WriteFile"));
+        printf("Terminal failure: Unable to write from file.\n GetLastError=%08x\n", (unsigned int)GetLastError());
         CloseHandle(handle);
     }
 #endif

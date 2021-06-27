@@ -10,9 +10,9 @@ void timer() {
 
     if ((int)now > (int)before) { // If on a seconds border:
         // Update the window title with the current time:
-        static NumberStringBuffer number;
+        static NumberString number;
         printNumberIntoString((int)now, &number);
-        app->platform.setWindowTitle(number.string);
+        app->platform.setWindowTitle(number.string.char_ptr);
     }
     before = now;
     endFrameTimer(&app->time.timers.update);
