@@ -1,10 +1,11 @@
-# SlimApp
+<img src="SlimApp_logo.png" alt="SlimApp_logo"><br>
 
 A minimalist(*) and platform-agnostic application layer for writing graphical applications.<br>
+A bare-bone application executable on Windows measures at around 13 KB(!)<br>
 Available as either a single header file or a directory of headers (a "unity build" setup).<br>
 Can be complied in either C or C++.<br>
 
-<i>(*A bare-bone application executable on Windows measures at around 13 KB(!))<br></i>
+Examples of projects using this one are [SlimEngine](https://github.com/HardCoreCodin/SlimEngine) and [SlimTracin](https://github.com/HardCoreCodin/SlimTracin).
 
 Architecture:
 -
