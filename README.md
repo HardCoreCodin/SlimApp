@@ -21,6 +21,16 @@ The single header file variant includes everything.<br>
 Otherwise, specific headers can be included from the directory variant.<br>
 Only the entry point needs to be defined (see example below). <br>
 
+SlimApp comes with pre-configured CMake targets for all examples.<br>
+For manual builds on Windows, the typical system libraries need to be linked<br>
+(winmm.lib, gdi32.lib, shell32.lib, user32.lib) and the SUBSYSTEM needs to be set to WINDOWS<br>
+
+All examples were tested in all combinations of:
+Source: Single header file (SlimApp.h), Directory of headers (specific includes) 
+Compiler: MSVC, MinGW, CLang
+Language: C, C++
+CPU Arch: x86, x64
+
 Features:
 -
 SlimApp aims to provide only the absolute bare necessities needed for a windowed application.<br>

@@ -27,19 +27,19 @@ void drawKeyboard() {
     rect.min.y = 216;
     rect.max.y = 236;
     fillRect(canvas, Color(nav_keys_pressed.left ? White : Grey), &rect);
-    drawText(canvas, Color(nav_keys_pressed.left ? Grey : White), "A", rect.min.x + 5, rect.min.y + 5);
+    drawText(canvas, Color(nav_keys_pressed.left ? Grey : White), (char*)"A", rect.min.x + 5, rect.min.y + 5);
 
     // Draw the 'S' key:
     rect.min.x += 22;
     rect.max.x += 22;
     fillRect(canvas, Color(nav_keys_pressed.down ? White : Grey), &rect);
-    drawText(canvas, Color(nav_keys_pressed.down ? Grey : White), "S", rect.min.x + 5, rect.min.y + 5);
+    drawText(canvas, Color(nav_keys_pressed.down ? Grey : White), (char*)"S", rect.min.x + 5, rect.min.y + 5);
 
     // Draw the 'D' key:
     rect.min.x += 22;
     rect.max.x += 22;
     fillRect(canvas, Color(nav_keys_pressed.right ? White : Grey), &rect);
-    drawText(canvas, Color(nav_keys_pressed.right ? Grey : White), "D", rect.min.x + 5, rect.min.y + 5);
+    drawText(canvas, Color(nav_keys_pressed.right ? Grey : White), (char*)"D", rect.min.x + 5, rect.min.y + 5);
 
     // Draw the 'W' key:
     rect.min.x -= 28;
@@ -47,7 +47,7 @@ void drawKeyboard() {
     rect.min.y -= 22;
     rect.max.y -= 22;
     fillRect(canvas, Color(nav_keys_pressed.up ? White : Grey), &rect);
-    drawText(canvas, Color(nav_keys_pressed.up ? Grey : White), "W", rect.min.x + 5, rect.min.y + 5);
+    drawText(canvas, Color(nav_keys_pressed.up ? Grey : White), (char*)"W", rect.min.x + 5, rect.min.y + 5);
 
     // Draw the left Ctrl key:
     rect.min.x = 222;

@@ -10,7 +10,7 @@ void showTheAnswer() {
 
     // Draw a multi-colored line of text:
     drawText(  canvas, Color(Green),
-               "The answer is... :    (!)",
+               (char*)"The answer is... :    (!)",
                100, 50);
     drawNumber(canvas, Color(Red  ),
                42,

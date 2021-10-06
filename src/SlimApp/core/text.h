@@ -81,8 +81,8 @@ void drawText(PixelGrid *canvas, RGBA color, char *str, i32 x, i32 y) {
         y < 0 || y > canvas->dimensions.height - FONT_HEIGHT)
         return;
 
-    u16 current_x = x;
-    u16 current_y = y;
+    u16 current_x = (u16)x;
+    u16 current_y = (u16)y;
     u16 t_offset;
     u16 pixel_line_step = canvas->dimensions.width - FONT_WIDTH;
     u32 char_line_step  = canvas->dimensions.width * LINE_HEIGHT;
@@ -97,7 +97,7 @@ void drawText(PixelGrid *canvas, RGBA color, char *str, i32 x, i32 y) {
                 break;
 
             pixel += char_line_step - current_x + x;
-            current_x = x;
+            current_x = (u16)x;
             current_y += LINE_HEIGHT;
         } else if (character == '\t') {
             t_offset = FONT_WIDTH * (4 - ((current_x / FONT_WIDTH) & 3));

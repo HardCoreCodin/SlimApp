@@ -58,7 +58,7 @@ u64 Win32_getTicks() {
     return (u64)performance_counter.QuadPart;
 }
 void* Win32_getMemory(u64 size) {
-    return VirtualAlloc((LPVOID)MEMORY_BASE, size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+    return VirtualAlloc((LPVOID)MEMORY_BASE, (SIZE_T)size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 }
 
 inline UINT getRawInput(LPVOID data) {
@@ -165,11 +165,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
         case WM_SYSKEYDOWN:
         case WM_KEYDOWN:
-            _keyChanged((u32)wParam, true);
+            _keyChanged((u8)wParam, true);
             break;
 
         case WM_SYSKEYUP:
-        case WM_KEYUP: _keyChanged((u32)wParam, false); break;
+        case WM_KEYUP: _keyChanged((u8)wParam, false); break;
 
         case WM_MBUTTONUP:     _mouseButtonUp(  &app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
         case WM_MBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;

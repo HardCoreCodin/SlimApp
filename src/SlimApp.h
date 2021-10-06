@@ -44,23 +44,23 @@ ENABLE_FP_CONTRACT
 typedef unsigned char      bool;
 #endif
 
-#ifndef false
-#define false 0
-#endif
-
-#ifndef true
-#define true 1
-#endif
-
 typedef unsigned char      u8;
 typedef unsigned short     u16;
-typedef unsigned int       u32;
+typedef unsigned long int  u32;
 typedef unsigned long long u64;
 typedef signed   short     i16;
-typedef signed   int       i32;
+typedef signed   long int  i32;
 
 typedef float  f32;
 typedef double f64;
+
+#ifndef false
+#define false (u8)0
+#endif
+
+#ifndef true
+#define true (u8)1
+#endif
 
 typedef void* (*CallbackWithInt)(u64 size);
 typedef void (*CallbackWithBool)(bool on);
@@ -198,21 +198,22 @@ void copyToString(String *string, char* char_ptr, u32 offset) {
 }
 
 typedef struct NumberString {
-    char _buffer[12];
+    char _buffer[13];
     String string;
 } NumberString;
 
 void initNumberString(NumberString *number_string) {
     number_string->string.char_ptr = number_string->_buffer;
     number_string->string.length = 1;
-    number_string->_buffer[11] = 0;
-    for (u8 i = 0; i < 11; i++)
+    number_string->_buffer[12] = 0;
+    for (u8 i = 0; i < 12; i++)
         number_string->_buffer[i] = ' ';
 }
 
 void printNumberIntoString(i32 number, NumberString *number_string) {
     initNumberString(number_string);
     char *buffer = number_string->_buffer;
+    buffer[12] = 0;
 
     bool is_negative = number < 0;
     if (is_negative) number = -number;
@@ -244,6 +245,55 @@ void printNumberIntoString(i32 number, NumberString *number_string) {
         number_string->string.length = 1;
         number_string->string.char_ptr = buffer + 11;
     }
+}
+
+void printFloatIntoString(f32 number, NumberString *number_string, u8 float_digits_count) {
+    f32 factor = 1;
+    for (u8 i = 0; i < float_digits_count; i++) factor *= 10;
+    i32 int_num = (i32)(number * factor);
+    if (int_num == 0) {
+        printNumberIntoString((i32)factor, number_string);
+        number_string->string.length++;
+        number_string->string.char_ptr[0] = '.';
+        number_string->string.char_ptr--;
+        number_string->string.char_ptr[0] = '0';
+        return;
+    }
+
+    bool is_negative = number < 0;
+    bool is_fraction = is_negative ? number > -1 : number < 1;
+
+    printNumberIntoString(int_num, number_string);
+
+    if (is_fraction) {
+        u32 len = number_string->string.length;
+        number_string->string.length++;
+        number_string->string.char_ptr--;
+        if (is_negative) {
+            number_string->string.char_ptr[0] = '-';
+            number_string->string.char_ptr[1] = '0';
+        } else {
+            number_string->string.char_ptr[0] = '0';
+        }
+        if (len < float_digits_count) {
+            for (u32 i = 0; i < (float_digits_count - len); i++) {
+                number_string->string.length++;
+                number_string->string.char_ptr--;
+                number_string->string.char_ptr[0] = '0';
+            }
+        }
+    }
+
+    static char tmp[13];
+    tmp[number_string->string.length + 1] = 0;
+    for (u8 i = 0; i < (u8)number_string->string.length; i++) {
+        u8 char_count_from_right_to_left = (u8)number_string->string.length - i - 1;
+        if (char_count_from_right_to_left >= float_digits_count) tmp[i] = number_string->string.char_ptr[i];
+        else                                                     tmp[i + 1] = number_string->string.char_ptr[i];
+    }
+    tmp[number_string->string.length - float_digits_count] = '.';
+    copyToString(&number_string->string, tmp, 0);
+    if (is_negative) number_string->string.length++;
 }
 
 
@@ -652,7 +702,7 @@ void fillRect(PixelGrid *canvas, RGBA color, Rect *rect) {
     i32 min_x, min_y, max_x, max_y;
     subRange(rect->min.x, rect->max.x, canvas->dimensions.width,  0, &min_x, &max_x);
     subRange(rect->min.y, rect->max.y, canvas->dimensions.height, 0, &min_y, &max_y);
-    for (u16 y = min_y; y <= max_y; y++)
+    for (i32 y = min_y; y <= max_y; y++)
         drawHLine2D(canvas, color, min_x, max_x, y);
 }
 
@@ -669,10 +719,22 @@ void fillTriangle(PixelGrid *canvas, RGBA color, f32 *X, f32 *Y) {
         if (Y[i] < Y[ysi]) ysi = i;
         if (Y[i] > Y[yei]) yei = i;
     }
-    u8* id = ysi ? (ysi == 1 ?
-                    (u8[3]){1, 2, 0} :
-                    (u8[3]){2, 0, 1}) :
-             (u8[3]){0, 1, 2};
+    u8 id[3];
+    if (ysi) {
+        if (ysi == 1) {
+            id[0] = 1;
+            id[1] = 2;
+            id[2] = 0;
+        } else {
+            id[0] = 2;
+            id[1] = 0;
+            id[2] = 1;
+        }
+    } else {
+        id[0] = 0;
+        id[1] = 1;
+        id[2] = 2;
+    }
     x1 = X[id[0]]; y1 = Y[id[0]]; x1i = (i32)x1; y1i = (i32)y1;
     x2 = X[id[1]]; y2 = Y[id[1]]; x2i = (i32)x2; y2i = (i32)y2;
     x3 = X[id[2]]; y3 = Y[id[2]]; x3i = (i32)x3; y3i = (i32)y3;
@@ -683,14 +745,15 @@ void fillTriangle(PixelGrid *canvas, RGBA color, f32 *X, f32 *Y) {
     xs = dx3 ? x1 + dx3 * dy : x1; ysi = (i32)Y[ysi];
     xe = dx1 ? x1 + dx1 * dy : x1; yei = (i32)Y[yei];
     offset = W * y1i;
-    for (y = ysi; y < yei; y++){
+    for (y = ysi; y < yei; y++) {
         if (y == y3i) xs = dx2 ? (x3 + dx2 * (1 - (y3 - (f32)y3i))) : x3;
         if (y == y2i) xe = dx2 ? (x2 + dx2 * (1 - (y2 - (f32)y2i))) : x2;
         xsi = (i32)xs;
         xei = (i32)xe;
-        for (x = xsi; x < xei; x++)
+        for (x = xsi; x < xei; x++) {
             if (x > 0 && x < W && y > 0 && y < H)
                 canvas->pixels[offset + x].color = color;
+        }
         offset += W;
         xs += y < y3i ? dx3 : dx2;
         xe += y < y2i ? dx1 : dx2;
@@ -904,8 +967,8 @@ void drawText(PixelGrid *canvas, RGBA color, char *str, i32 x, i32 y) {
         y < 0 || y > canvas->dimensions.height - FONT_HEIGHT)
         return;
 
-    u16 current_x = x;
-    u16 current_y = y;
+    u16 current_x = (u16)x;
+    u16 current_y = (u16)y;
     u16 t_offset;
     u16 pixel_line_step = canvas->dimensions.width - FONT_WIDTH;
     u32 char_line_step  = canvas->dimensions.width * LINE_HEIGHT;
@@ -920,7 +983,7 @@ void drawText(PixelGrid *canvas, RGBA color, char *str, i32 x, i32 y) {
                 break;
 
             pixel += char_line_step - current_x + x;
-            current_x = x;
+            current_x = (u16)x;
             current_y += LINE_HEIGHT;
         } else if (character == '\t') {
             t_offset = FONT_WIDTH * (4 - ((current_x / FONT_WIDTH) & 3));
@@ -1129,7 +1192,7 @@ void _initApp(Defaults *defaults, void* window_content_memory) {
     initControls(&app->controls);
     initPixelGrid(&app->window_content, (Pixel*)window_content_memory);
 
-    defaults->title = "";
+    defaults->title = (char*)"";
     defaults->width = 480;
     defaults->height = 360;
     defaults->additional_memory_size = 0;
@@ -1200,7 +1263,7 @@ u64 Win32_getTicks() {
     return (u64)performance_counter.QuadPart;
 }
 void* Win32_getMemory(u64 size) {
-    return VirtualAlloc((LPVOID)MEMORY_BASE, size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+    return VirtualAlloc((LPVOID)MEMORY_BASE, (SIZE_T)size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 }
 
 inline UINT getRawInput(LPVOID data) {
@@ -1307,11 +1370,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
         case WM_SYSKEYDOWN:
         case WM_KEYDOWN:
-            _keyChanged((u32)wParam, true);
+            _keyChanged((u8)wParam, true);
             break;
 
         case WM_SYSKEYUP:
-        case WM_KEYUP: _keyChanged((u32)wParam, false); break;
+        case WM_KEYUP: _keyChanged((u8)wParam, false); break;
 
         case WM_MBUTTONUP:     _mouseButtonUp(  &app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
         case WM_MBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;

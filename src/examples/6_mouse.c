@@ -66,10 +66,10 @@ void drawMouseDoubleClickArea(PixelGrid *canvas, Mouse *mouse) {
     rect.min.x += 20;
     rect.min.y += 20;
     if (mouse->is_captured) {
-        drawText(canvas, Color(Red), "Captured!", rect.min.x, rect.min.y);
-        drawText(canvas, Color(Cyan), "(Double-click anywhere to release...)", rect.min.x - 40, rect.min.y + 50);
+        drawText(canvas, Color(Red), (char*)"Captured!", rect.min.x, rect.min.y);
+        drawText(canvas, Color(Cyan), (char*)"(Double-click anywhere to release...)", rect.min.x - 40, rect.min.y + 50);
     } else
-        drawText(canvas, Color(Green), "Double-click me!", rect.min.x, rect.min.y);
+        drawText(canvas, Color(Green), (char*)"Double-click me!", rect.min.x, rect.min.y);
 
     if (mouse->double_clicked) {
         mouse->double_clicked = false;
@@ -88,20 +88,20 @@ void drawMouseDoubleClickArea(PixelGrid *canvas, Mouse *mouse) {
 }
 
 void drawMouseCoords(PixelGrid *canvas, Mouse *mouse) {
-    drawText(canvas, Color(White), "X", 340, 7);
-    drawText(canvas, Color(White), "Y", 390, 7);
+    drawText(canvas, Color(White), (char*)"X", 340, 7);
+    drawText(canvas, Color(White), (char*)"Y", 390, 7);
 
-    drawText(canvas, Color(White),"  Cursor:", 230, 20);
-    drawText(canvas, Color(Grey ),"RawInput:", 230, 32);
+    drawText(canvas, Color(White),(char*)"  Cursor:", 230, 20);
+    drawText(canvas, Color(Grey ),(char*)"RawInput:", 230, 32);
 
-    drawText(canvas, Color(Blue),"LMB Down:", 230, 70);
-    drawText(canvas, Color(Cyan),"LMB   Up:", 230, 90);
+    drawText(canvas, Color(Blue),(char*)"LMB Down:", 230, 70);
+    drawText(canvas, Color(Cyan),(char*)"LMB   Up:", 230, 90);
 
-    drawText(canvas, Color(Green ),"MMB Down:", 230, 130);
-    drawText(canvas, Color(Yellow),"MMB   Up:", 230, 150);
+    drawText(canvas, Color(Green ),(char*)"MMB Down:", 230, 130);
+    drawText(canvas, Color(Yellow),(char*)"MMB   Up:", 230, 150);
 
-    drawText(canvas, Color(Red    ),"RMB Down:", 230, 190);
-    drawText(canvas, Color(Magenta),"RMB   Up:", 230, 210);
+    drawText(canvas, Color(Red    ),(char*)"RMB Down:", 230, 190);
+    drawText(canvas, Color(Magenta),(char*)"RMB   Up:", 230, 210);
 
     // Draw Cursor position coordinates:
     drawNumber(canvas, Color(White), mouse->pos.x, 350, 20);

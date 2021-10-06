@@ -178,7 +178,7 @@ void _initApp(Defaults *defaults, void* window_content_memory) {
     initControls(&app->controls);
     initPixelGrid(&app->window_content, (Pixel*)window_content_memory);
 
-    defaults->title = "";
+    defaults->title = (char*)"";
     defaults->width = 480;
     defaults->height = 360;
     defaults->additional_memory_size = 0;

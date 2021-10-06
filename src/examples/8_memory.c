@@ -55,12 +55,12 @@ void initApp(Defaults *defaults) {
     if (!initAppMemory(sizeof(Game) + sizeof(Player))) return;
 
     // Allocate memory for the game and store it on the app:
-    Game *game = allocateAppMemory(sizeof(Game));
+    Game *game = (Game*)allocateAppMemory(sizeof(Game));
     if (game) app->user_data = game;
     else return;
 
     // Allocate memory for the player store it on the game:
-    Player *player = allocateAppMemory(sizeof(Player));
+    Player *player = (Player*)allocateAppMemory(sizeof(Player));
     if (player) game->player = player;
     else return;
 
