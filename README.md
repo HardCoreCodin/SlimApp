@@ -25,11 +25,11 @@ SlimApp comes with pre-configured CMake targets for all examples.<br>
 For manual builds on Windows, the typical system libraries need to be linked<br>
 (winmm.lib, gdi32.lib, shell32.lib, user32.lib) and the SUBSYSTEM needs to be set to WINDOWS<br>
 
-All examples were tested in all combinations of:
-Source: Single header file (SlimApp.h), Directory of headers (specific includes) 
-Compiler: MSVC, MinGW, CLang
-Language: C, C++
-CPU Arch: x86, x64
+All examples were tested in all combinations of:<br>
+Source: Single header file (SlimApp.h), Directory of headers (specific includes) <br>
+Compiler: MSVC, MinGW, CLang<br>
+Language: C, C++<br>
+CPU Arch: x86, x64<br>
 
 Features:
 -
