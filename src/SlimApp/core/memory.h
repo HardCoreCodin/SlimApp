@@ -8,23 +8,22 @@
 #define MEMORY_SIZE Gigabytes(1)
 #define MEMORY_BASE Terabytes(2)
 
-typedef struct Memory {
-    u8* address;
-    u64 occupied, capacity;
-} Memory;
+struct Memory {
+    u8* address = nullptr;
+    u64 capacity = 0;
+    u64 occupied = 0;
 
-void initMemory(Memory *memory, u8* address, u64 capacity) {
-    memory->address = (u8*)address;
-    memory->capacity = capacity;
-    memory->occupied = 0;
-}
+    void init(u8* Address, const u64 Capacity) {
+        address = Address;
+        capacity = Capacity;
+    }
+    void* allocate(u64 size) {
+        if (!address) return null;
+        occupied += size;
+        if (occupied > capacity) return null;
 
-void* allocateMemory(Memory *memory, u64 size) {
-    if (!memory->address) return null;
-    memory->occupied += size;
-    if (memory->occupied > memory->capacity) return null;
-
-    void* address = memory->address;
-    memory->address += size;
-    return address;
-}
+        void* current_address = address;
+        address += size;
+        return current_address;
+    }
+};

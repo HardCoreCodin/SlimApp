@@ -6,183 +6,66 @@
 #include "./core/memory.h"
 #include "./core/controls.h"
 
-typedef struct AppCallbacks {
-    void (*windowRedraw)();
-    void (*windowResize)(u16 width, u16 height);
-    void (*keyChanged)(  u8 key, bool pressed);
-    void (*mouseButtonUp)(  MouseButton *mouse_button);
-    void (*mouseButtonDown)(MouseButton *mouse_button);
-    void (*mouseButtonDoubleClicked)(MouseButton *mouse_button);
-    void (*mouseWheelScrolled)(f32 amount);
-    void (*mousePositionSet)(i32 x, i32 y);
-    void (*mouseMovementSet)(i32 x, i32 y);
-    void (*mouseRawMovementSet)(i32 x, i32 y);
-} AppCallbacks;
+struct Defaults {
+    char* title = (char*)"";
+    u16 width = 480,
+        height = 360;
+    u64 additional_memory_size = 0;
+};
 
-typedef void* (*CallbackForFileOpen)(const char* file_path);
-typedef bool  (*CallbackForFileRW)(void *out, unsigned long, void *handle);
-typedef void  (*CallbackForFileClose)(void *handle);
+struct AppCallbacks {
+    void (*windowRedraw)() = nullptr;
+    void (*windowResize)(u16 width, u16 height) = nullptr;
+    void (*keyChanged)(  u8 key, bool pressed) = nullptr;
+    void (*mouseButtonUp)(  MouseButton *mouse_button) = nullptr;
+    void (*mouseButtonDown)(MouseButton *mouse_button) = nullptr;
+    void (*mouseButtonDoubleClicked)(MouseButton *mouse_button) = nullptr;
+    void (*mouseWheelScrolled)(f32 amount) = nullptr;
+    void (*mousePositionSet)(i32 x, i32 y) = nullptr;
+    void (*mouseMovementSet)(i32 x, i32 y) = nullptr;
+    void (*mouseRawMovementSet)(i32 x, i32 y) = nullptr;
+};
 
-typedef struct Platform {
-    GetTicks             getTicks;
-    CallbackWithInt      getMemory;
-    CallbackWithCharPtr  setWindowTitle;
-    CallbackWithBool     setWindowCapture;
-    CallbackWithBool     setCursorVisibility;
-    CallbackForFileClose closeFile;
-    CallbackForFileOpen  openFileForReading;
-    CallbackForFileOpen  openFileForWriting;
-    CallbackForFileRW    readFromFile;
-    CallbackForFileRW    writeToFile;
-    u64 ticks_per_second;
-} Platform;
-
-typedef struct Defaults {
-    char* title;
-    u16 width, height;
-    u64 additional_memory_size;
-} Defaults;
-
-typedef struct App {
-    Memory memory;
-    Platform platform;
+struct App {
     Controls controls;
     PixelGrid window_content;
-    AppCallbacks on;
     Time time;
-    bool is_running;
-    void *user_data;
-} App;
+    AppCallbacks on;
 
-App *app;
+    bool is_running = true;
+    void *user_data = nullptr;
 
-void initApp(Defaults *defaults);
+//    App() = delete;
+    App(const KeyMap key_map, Pixel* pixels, Defaults *defaults) : controls(key_map), window_content(pixels) {
+        init(defaults);
+    }
+    void init(Defaults *defaults);
 
-void _windowRedraw() {
-    if (!app->is_running) return;
-    if (app->on.windowRedraw) app->on.windowRedraw();
-}
+    bool initMemory(u64 size) {
+        if (memory.address) return false;
 
-void _windowResize(u16 width, u16 height) {
-    if (!app->is_running) return;
-    updateDimensions(&app->window_content.dimensions, width, height);
+        void* memory_address = os::getMemory(size);
+        if (!memory_address) {
+            is_running = false;
+            return false;
+        }
 
-    if (app->on.windowResize) app->on.windowResize(width, height);
-    if (app->on.windowRedraw) app->on.windowRedraw();
-}
-
-void _keyChanged(u8 key, bool pressed) {
-         if (key == app->controls.key_map.ctrl)  app->controls.is_pressed.ctrl  = pressed;
-    else if (key == app->controls.key_map.alt)   app->controls.is_pressed.alt   = pressed;
-    else if (key == app->controls.key_map.shift) app->controls.is_pressed.shift = pressed;
-    else if (key == app->controls.key_map.space) app->controls.is_pressed.space = pressed;
-    else if (key == app->controls.key_map.tab)   app->controls.is_pressed.tab   = pressed;
-
-    if (app->on.keyChanged) app->on.keyChanged(key, pressed);
-}
-
-void _mouseButtonDown(MouseButton *mouse_button, i32 x, i32 y) {
-    mouse_button->is_pressed = true;
-    mouse_button->is_handled = false;
-
-    mouse_button->down_pos.x = x;
-    mouse_button->down_pos.y = y;
-
-    if (app->on.mouseButtonDown) app->on.mouseButtonDown(mouse_button);
-}
-
-void _mouseButtonUp(MouseButton *mouse_button, i32 x, i32 y) {
-    mouse_button->is_pressed = false;
-    mouse_button->is_handled = false;
-
-    mouse_button->up_pos.x = x;
-    mouse_button->up_pos.y = y;
-
-    if (app->on.mouseButtonUp) app->on.mouseButtonUp(mouse_button);
-}
-
-void _mouseButtonDoubleClicked(MouseButton *mouse_button, i32 x, i32 y) {
-    app->controls.mouse.double_clicked = true;
-    mouse_button->double_click_pos.x = x;
-    mouse_button->double_click_pos.y = y;
-    if (app->on.mouseButtonDoubleClicked) app->on.mouseButtonDoubleClicked(mouse_button);
-}
-
-void _mouseWheelScrolled(f32 amount) {
-    app->controls.mouse.wheel_scroll_amount += amount * 100;
-    app->controls.mouse.wheel_scrolled = true;
-
-    if (app->on.mouseWheelScrolled) app->on.mouseWheelScrolled(amount);
-}
-
-void _mousePositionSet(i32 x, i32 y) {
-    app->controls.mouse.pos.x = x;
-    app->controls.mouse.pos.y = y;
-
-    if (app->on.mousePositionSet) app->on.mousePositionSet(x, y);
-}
-
-void _mouseMovementSet(i32 x, i32 y) {
-    app->controls.mouse.movement.x = x - app->controls.mouse.pos.x;
-    app->controls.mouse.movement.y = y - app->controls.mouse.pos.y;
-    app->controls.mouse.moved = true;
-
-    if (app->on.mouseMovementSet) app->on.mouseMovementSet(x, y);
-}
-
-void _mouseRawMovementSet(i32 x, i32 y) {
-    app->controls.mouse.pos_raw_diff.x += x;
-    app->controls.mouse.pos_raw_diff.y += y;
-    app->controls.mouse.moved = true;
-
-    if (app->on.mouseRawMovementSet) app->on.mouseRawMovementSet(x, y);
-}
-
-bool initAppMemory(u64 size) {
-    if (app->memory.address) return false;
-
-    void* memory_address = app->platform.getMemory(size);
-    if (!memory_address) {
-        app->is_running = false;
-        return false;
+        memory.init((u8*)memory_address, size);
+        return true;
     }
 
-    initMemory(&app->memory, (u8*)memory_address, size);
-    return true;
-}
+    void* allocateMemory(u64 size) {
+        void *new_memory = memory.allocate(size);
+        if (new_memory) return new_memory;
 
-void* allocateAppMemory(u64 size) {
-    void *new_memory = allocateMemory(&app->memory, size);
-    if (new_memory) return new_memory;
+        is_running = false;
+        return null;
+    }
 
-    app->is_running = false;
-    return null;
-}
+private:
+    Memory memory;
+};
 
-void _initApp(Defaults *defaults, void* window_content_memory) {
-    app->is_running = true;
-    app->user_data = null;
-    app->memory.address = null;
-
-    app->on.windowRedraw = null;
-    app->on.keyChanged = null;
-    app->on.mouseButtonUp = null;
-    app->on.mouseButtonDown = null;
-    app->on.mouseButtonDoubleClicked = null;
-    app->on.mouseWheelScrolled = null;
-    app->on.mousePositionSet = null;
-    app->on.mouseMovementSet = null;
-    app->on.mouseRawMovementSet = null;
-
-    initTime(&app->time, app->platform.getTicks, app->platform.ticks_per_second);
-    initControls(&app->controls);
-    initPixelGrid(&app->window_content, (Pixel*)window_content_memory);
-
-    defaults->title = (char*)"";
-    defaults->width = 480;
-    defaults->height = 360;
-    defaults->additional_memory_size = 0;
-    initApp(defaults);
-}
+App *app;
 
 #include "./platforms/win32.h"

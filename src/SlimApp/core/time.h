@@ -1,123 +1,88 @@
 #pragma once
 
-typedef u64 (*GetTicks)();
-
-typedef struct PerTick {
-    f64 seconds, milliseconds, microseconds, nanoseconds;
-} PerTick;
+struct PerTick {
+    const f64 seconds, milliseconds, microseconds, nanoseconds;
+    PerTick() = delete;
+    explicit PerTick(const f64 tps) :
+        seconds(     1          / tps),
+        milliseconds(1000       / tps),
+        microseconds(1000000    / tps),
+        nanoseconds( 1000000000 / tps) {}
+};
 
 typedef struct Ticks {
-    PerTick per_tick;
-    u64 per_second;
+    const PerTick per_tick;
+    const u64 per_second;
+    Ticks() = delete;
+    explicit Ticks(const u64 tps) : per_second(tps), per_tick((f64)tps) {}
 } Ticks;
 
-typedef struct Timer {
-    GetTicks getTicks;
-    Ticks *ticks;
+struct Timer {
+    f32 delta_time = 0;
+    u64 ticks_before = 0,
+        ticks_after = 0,
+        ticks_diff = 0,
+        accumulated_ticks = 0,
+        accumulated_frame_count = 0,
+        ticks_of_last_report = 0,
+        seconds = 0,
+        milliseconds = 0,
+        microseconds = 0,
+        nanoseconds = 0;
+    f64 average_frames_per_tick = 0,
+        average_ticks_per_frame = 0;
+    u16 average_frames_per_second = 0,
+        average_milliseconds_per_frame = 0,
+        average_microseconds_per_frame = 0,
+        average_nanoseconds_per_frame = 0;
 
-    f32 delta_time;
-    u64 ticks_before,
-        ticks_after,
-        ticks_diff,
-        accumulated_ticks,
-        accumulated_frame_count,
-        ticks_of_last_report,
-        seconds,
-        milliseconds,
-        microseconds,
-        nanoseconds;
-    f64 average_frames_per_tick,
-        average_ticks_per_frame;
-    u16 average_frames_per_second,
-        average_milliseconds_per_frame,
-        average_microseconds_per_frame,
-        average_nanoseconds_per_frame;
-} Timer;
+    Timer() = delete;
+    Ticks *ticks = nullptr;
+    explicit Timer(Ticks *tks) : ticks(tks), ticks_before(os::getTicks()), ticks_of_last_report(os::getTicks()) {};
+    void accumulate() {
+        ticks_diff = ticks_after - ticks_before;
+        accumulated_ticks += ticks_diff;
+        accumulated_frame_count++;
 
-void initTimer(Timer *timer, GetTicks getTicks, Ticks *ticks) {
-    timer->getTicks = getTicks;
-    timer->ticks    = ticks;
+        seconds      = (u64)(ticks->per_tick.seconds      * (f64)(ticks_diff));
+        milliseconds = (u64)(ticks->per_tick.milliseconds * (f64)(ticks_diff));
+        microseconds = (u64)(ticks->per_tick.microseconds * (f64)(ticks_diff));
+        nanoseconds  = (u64)(ticks->per_tick.nanoseconds  * (f64)(ticks_diff));
+    }
 
-    timer->delta_time = 0;
-    timer->ticks_before = 0;
-    timer->ticks_after = 0;
-    timer->ticks_diff = 0;
+    void average() {
+        average_frames_per_tick = (f64)accumulated_frame_count / (f64)accumulated_ticks;
+        average_ticks_per_frame = (f64)accumulated_ticks / (f64)accumulated_frame_count;
+        average_frames_per_second = (u16)(average_frames_per_tick      * (f64)ticks->per_second);
+        average_milliseconds_per_frame = (u16)(average_ticks_per_frame * ticks->per_tick.milliseconds);
+        average_microseconds_per_frame = (u16)(average_ticks_per_frame * ticks->per_tick.microseconds);
+        average_nanoseconds_per_frame = (u16)(average_ticks_per_frame  * ticks->per_tick.nanoseconds);
+        accumulated_ticks = accumulated_frame_count = 0;
+    }
 
-    timer->accumulated_ticks = 0;
-    timer->accumulated_frame_count = 0;
+    INLINE void startFrame() {
+        ticks_after = ticks_before;
+        ticks_before = os::getTicks();
+        ticks_diff = ticks_before - ticks_after;
+        delta_time = (f32)((f64)ticks_diff * ticks->per_tick.seconds);
+    }
 
-    timer->ticks_of_last_report = 0;
+    INLINE void endFrame() {
+        ticks_after = os::getTicks();
+        accumulate();
+        if (accumulated_ticks >= ticks->per_second / 4)
+            average();
+    }
+};
 
-    timer->seconds = 0;
-    timer->milliseconds = 0;
-    timer->microseconds = 0;
-    timer->nanoseconds = 0;
-
-    timer->average_frames_per_tick = 0;
-    timer->average_ticks_per_frame = 0;
-    timer->average_frames_per_second = 0;
-    timer->average_milliseconds_per_frame = 0;
-    timer->average_microseconds_per_frame = 0;
-    timer->average_nanoseconds_per_frame = 0;
-}
-
-typedef struct Timers {
+struct Timers {
     Timer update, render, aux;
-} Timers;
+    Timers() = delete;
+    explicit Timers(Ticks *ticks) : update(ticks), render(ticks), aux(ticks) {}
+};
 
-typedef struct Time {
-    Timers timers;
+struct Time {
     Ticks ticks;
-    GetTicks getTicks;
-} Time;
-
-void initTime(Time *time, GetTicks getTicks, u64 ticks_per_second) {
-    time->getTicks = getTicks;
-    time->ticks.per_second = ticks_per_second;
-
-    time->ticks.per_tick.seconds      = 1          / (f64)(time->ticks.per_second);
-    time->ticks.per_tick.milliseconds = 1000       / (f64)(time->ticks.per_second);
-    time->ticks.per_tick.microseconds = 1000000    / (f64)(time->ticks.per_second);
-    time->ticks.per_tick.nanoseconds  = 1000000000 / (f64)(time->ticks.per_second);
-
-    initTimer(&time->timers.update, getTicks, &time->ticks);
-    initTimer(&time->timers.render, getTicks, &time->ticks);
-    initTimer(&time->timers.aux,    getTicks, &time->ticks);
-
-    time->timers.update.ticks_before = time->timers.update.ticks_of_last_report = getTicks();
-}
-
-void accumulateTimer(Timer* timer) {
-    timer->ticks_diff = timer->ticks_after - timer->ticks_before;
-    timer->accumulated_ticks += timer->ticks_diff;
-    timer->accumulated_frame_count++;
-
-    timer->seconds      = (u64)(timer->ticks->per_tick.seconds      * (f64)(timer->ticks_diff));
-    timer->milliseconds = (u64)(timer->ticks->per_tick.milliseconds * (f64)(timer->ticks_diff));
-    timer->microseconds = (u64)(timer->ticks->per_tick.microseconds * (f64)(timer->ticks_diff));
-    timer->nanoseconds  = (u64)(timer->ticks->per_tick.nanoseconds  * (f64)(timer->ticks_diff));
-}
-
-void averageTimer(Timer *timer) {
-    timer->average_frames_per_tick = (f64)timer->accumulated_frame_count / timer->accumulated_ticks;
-    timer->average_ticks_per_frame = (f64)timer->accumulated_ticks / timer->accumulated_frame_count;
-    timer->average_frames_per_second = (u16)(timer->average_frames_per_tick      * timer->ticks->per_second);
-    timer->average_milliseconds_per_frame = (u16)(timer->average_ticks_per_frame * timer->ticks->per_tick.milliseconds);
-    timer->average_microseconds_per_frame = (u16)(timer->average_ticks_per_frame * timer->ticks->per_tick.microseconds);
-    timer->average_nanoseconds_per_frame = (u16)(timer->average_ticks_per_frame  * timer->ticks->per_tick.nanoseconds);
-    timer->accumulated_ticks = timer->accumulated_frame_count = 0;
-}
-
-INLINE void startFrameTimer(Timer *timer) {
-    timer->ticks_after = timer->ticks_before;
-    timer->ticks_before = timer->getTicks();
-    timer->ticks_diff = timer->ticks_before - timer->ticks_after;
-    timer->delta_time = (f32)(timer->ticks_diff * timer->ticks->per_tick.seconds);
-}
-
-INLINE void endFrameTimer(Timer *timer) {
-    timer->ticks_after = timer->getTicks();
-    accumulateTimer(timer);
-    if (timer->accumulated_ticks >= timer->ticks->per_second / 4)
-        averageTimer(timer);
-}
+    Timers timers;
+    Time() : ticks(os::ticks_per_second), timers(&ticks) {}
+};

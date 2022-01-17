@@ -1,87 +1,108 @@
 #pragma once
 
-typedef struct MouseButton {
+struct MouseButton {
     vec2i down_pos, up_pos, double_click_pos;
-    bool is_pressed, is_handled;
-} MouseButton;
+    bool is_pressed = false,
+         is_handled = false,
+         double_clicked = false;
 
-typedef struct Mouse {
+    void down(i32 x, i32 y) {
+        is_pressed = true;
+        is_handled = false;
+
+        down_pos.x = x;
+        down_pos.y = y;
+    }
+
+    void up(i32 x, i32 y) {
+        is_pressed = false;
+        is_handled = false;
+
+        up_pos.x = x;
+        up_pos.y = y;
+    }
+
+    void doubleClick(i32 x, i32 y) {
+        double_clicked = true;
+        double_click_pos.x = x;
+        double_click_pos.y = y;
+    }
+};
+
+struct Mouse {
     MouseButton middle_button, right_button, left_button;
     vec2i pos, pos_raw_diff, movement;
-    f32 wheel_scroll_amount;
-    bool moved, is_captured,
-         move_handled,
-         double_clicked,
-         double_clicked_handled,
-         wheel_scrolled,
-         wheel_scroll_handled,
-         raw_movement_handled;
-} Mouse;
+    f32 wheel_scroll_amount = 0;
+    bool moved = false, is_captured = false,
+         move_handled = false,
+         double_clicked = false,
+         double_clicked_handled = false,
+         wheel_scrolled = false,
+         wheel_scroll_handled = false,
+         raw_movement_handled = false;
 
-void initMouse(Mouse *mouse) {
-    mouse->is_captured = false;
-
-    mouse->moved = false;
-    mouse->move_handled = false;
-
-    mouse->double_clicked = false;
-    mouse->double_clicked_handled = false;
-
-    mouse->wheel_scrolled = false;
-    mouse->wheel_scroll_amount = 0;
-    mouse->wheel_scroll_handled = false;
-
-    mouse->pos.x = 0;
-    mouse->pos.y = 0;
-    mouse->pos_raw_diff.x = 0;
-    mouse->pos_raw_diff.y = 0;
-    mouse->raw_movement_handled = false;
-
-    mouse->middle_button.is_pressed = false;
-    mouse->middle_button.is_handled = false;
-    mouse->middle_button.up_pos.x = 0;
-    mouse->middle_button.down_pos.x = 0;
-
-    mouse->right_button.is_pressed = false;
-    mouse->right_button.is_handled = false;
-    mouse->right_button.up_pos.x = 0;
-    mouse->right_button.down_pos.x = 0;
-
-    mouse->left_button.is_pressed = false;
-    mouse->left_button.is_handled = false;
-    mouse->left_button.up_pos.x = 0;
-    mouse->left_button.down_pos.x = 0;
-}
-
-void resetMouseChanges(Mouse *mouse) {
-    if (mouse->move_handled) {
-        mouse->move_handled = false;
-        mouse->moved = false;
+    void resetChanges() {
+        if (move_handled) {
+            move_handled = false;
+            moved = false;
+        }
+        if (double_clicked_handled) {
+            double_clicked_handled = false;
+            double_clicked = false;
+        }
+        if (raw_movement_handled) {
+            raw_movement_handled = false;
+            pos_raw_diff.x = 0;
+            pos_raw_diff.y = 0;
+        }
+        if (wheel_scroll_handled) {
+            wheel_scroll_handled = false;
+            wheel_scrolled = false;
+            wheel_scroll_amount = 0;
+        }
     }
-    if (mouse->double_clicked_handled) {
-        mouse->double_clicked_handled = false;
-        mouse->double_clicked = false;
-    }
-    if (mouse->raw_movement_handled) {
-        mouse->raw_movement_handled = false;
-        mouse->pos_raw_diff.x = 0;
-        mouse->pos_raw_diff.y = 0;
-    }
-    if (mouse->wheel_scroll_handled) {
-        mouse->wheel_scroll_handled = false;
-        mouse->wheel_scrolled = false;
-        mouse->wheel_scroll_amount = 0;
-    }
-}
 
-typedef struct KeyMap      { u8 ctrl, alt, shift, space, tab; } KeyMap;
-typedef struct IsPressed { bool ctrl, alt, shift, space, tab; } IsPressed;
-typedef struct Controls {
+    void scroll(f32 amount) {
+        wheel_scroll_amount += amount * 100;
+        wheel_scrolled = true;
+    }
+
+    void setPosition(i32 x, i32 y) {
+        pos.x = x;
+        pos.y = y;
+    }
+
+    void move(i32 x, i32 y) {
+        movement.x = x - pos.x;
+        movement.y = y - pos.y;
+        moved = true;
+    }
+
+    void moveRaw(i32 x, i32 y) {
+        pos_raw_diff.x += x;
+        pos_raw_diff.y += y;
+        moved = true;
+    }
+};
+
+struct KeyMap {
+    const u8 ctrl, alt, shift, space, tab;
+    KeyMap() = delete;
+    KeyMap(u8 Ctrl, u8 Alt, u8 Shift, u8 Space, u8 Tab) : ctrl(Ctrl), alt(Alt), shift(Shift), space(Space), tab(Tab) {}
+};
+
+struct IsPressed {
+    bool ctrl = false,
+         alt = false,
+         shift = false,
+         space = false,
+         tab = false;
+};
+
+struct Controls {
+    const KeyMap key_map;
     IsPressed is_pressed;
-    KeyMap key_map;
     Mouse mouse;
-} Controls;
-
-void initControls(Controls *controls) {
-    initMouse(&controls->mouse);
-}
+    Controls() = delete;
+    explicit Controls(const KeyMap km) : key_map(km) {}
+};

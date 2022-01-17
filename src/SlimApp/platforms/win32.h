@@ -5,6 +5,7 @@
 #include <tchar.h>
 #include <stdio.h>
 #include <strsafe.h>
+#include <new.h>
 
 void DisplayError(LPTSTR lpszFunction) {
     LPVOID lpMsgBuf;
@@ -47,20 +48,6 @@ UINT raw_input_size;
 PUINT raw_input_size_ptr = (PUINT)(&raw_input_size);
 UINT raw_input_header_size = sizeof(RAWINPUTHEADER);
 
-u64 Win32_ticksPerSecond;
-LARGE_INTEGER performance_counter;
-
-void Win32_setWindowTitle(char* str) { SetWindowTextA(window, str); }
-void Win32_setCursorVisibility(bool on) { ShowCursor(on); }
-void Win32_setWindowCapture(bool on) { if (on) SetCapture(window); else ReleaseCapture(); }
-u64 Win32_getTicks() {
-    QueryPerformanceCounter(&performance_counter);
-    return (u64)performance_counter.QuadPart;
-}
-void* Win32_getMemory(u64 size) {
-    return VirtualAlloc((LPVOID)MEMORY_BASE, (SIZE_T)size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-}
-
 inline UINT getRawInput(LPVOID data) {
     return GetRawInputData(raw_input_handle, RID_INPUT, data, raw_input_size_ptr, raw_input_header_size);
 }
@@ -76,8 +63,35 @@ inline bool hasRawMouseInput(LPARAM lParam) {
     );
 }
 
-void Win32_closeFile(void *handle) { CloseHandle(handle); }
-void* Win32_openFileForReading(const char* path) {
+LARGE_INTEGER performance_counter;
+
+void os::setWindowTitle(char* str) {
+    SetWindowTextA(window, str);
+}
+
+void os::setCursorVisibility(bool on) {
+    ShowCursor(on);
+}
+
+void os::setWindowCapture(bool on) {
+    if (on) SetCapture(window);
+    else ReleaseCapture();
+}
+
+u64 os::getTicks() {
+    QueryPerformanceCounter(&performance_counter);
+    return (u64)performance_counter.QuadPart;
+}
+
+void* os::getMemory(u64 size) {
+    return VirtualAlloc((LPVOID)MEMORY_BASE, (SIZE_T)size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+}
+
+void os::closeFile(void *handle) {
+    CloseHandle(handle);
+}
+
+void* os::openFileForReading(const char* path) {
     HANDLE handle = CreateFile(path,           // file to open
                                GENERIC_READ,          // open for reading
                                FILE_SHARE_READ,       // share for reading
@@ -94,7 +108,8 @@ void* Win32_openFileForReading(const char* path) {
 #endif
     return handle;
 }
-void* Win32_openFileForWriting(const char* path) {
+
+void* os::openFileForWriting(const char* path) {
     HANDLE handle = CreateFile(path,           // file to open
                                GENERIC_WRITE,          // open for writing
                                0,                      // do not share
@@ -111,7 +126,8 @@ void* Win32_openFileForWriting(const char* path) {
 #endif
     return handle;
 }
-bool Win32_readFromFile(LPVOID out, DWORD size, HANDLE handle) {
+
+bool os::readFromFile(LPVOID out, DWORD size, HANDLE handle) {
     DWORD bytes_read = 0;
     BOOL result = ReadFile(handle, out, size, &bytes_read, null);
 #ifndef NDEBUG
@@ -124,7 +140,7 @@ bool Win32_readFromFile(LPVOID out, DWORD size, HANDLE handle) {
     return result != FALSE;
 }
 
-bool Win32_writeToFile(LPVOID out, DWORD size, HANDLE handle) {
+bool os::writeToFile(LPVOID out, DWORD size, HANDLE handle) {
     DWORD bytes_written = 0;
     BOOL result = WriteFile(handle, out, size, &bytes_written, null);
 #ifndef NDEBUG
@@ -138,6 +154,13 @@ bool Win32_writeToFile(LPVOID out, DWORD size, HANDLE handle) {
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    MouseButton *mouse_button;
+    IsPressed *is_pressed = &app->controls.is_pressed;
+    bool pressed = message == WM_SYSKEYDOWN || message == WM_KEYDOWN;
+    u8 key = (u8)wParam;
+    i32 x, y;
+    f32 scroll_amount;
+
     switch (message) {
         case WM_DESTROY:
             app->is_running = false;
@@ -149,8 +172,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
             info.bmiHeader.biWidth = win_rect.right - win_rect.left;
             info.bmiHeader.biHeight = win_rect.top - win_rect.bottom;
-
-            _windowResize((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
+            app->window_content.dimensions.update((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
+            if (app->on.windowResize) app->on.windowResize((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
+            if (app->on.windowRedraw) app->on.windowRedraw();
 
             break;
 
@@ -164,36 +188,75 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             break;
 
         case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
         case WM_KEYDOWN:
-            _keyChanged((u8)wParam, true);
+        case WM_KEYUP:
+            switch (key) {
+                case VK_CONTROL: is_pressed->ctrl  = pressed; break;
+                case VK_MENU   : is_pressed->alt   = pressed; break;
+                case VK_SHIFT  : is_pressed->shift = pressed; break;
+                case VK_SPACE  : is_pressed->space = pressed; break;
+                case VK_TAB    : is_pressed->tab   = pressed; break;
+                default: break;
+            }
+            if (app->on.keyChanged) app->on.keyChanged(key, pressed);
+
             break;
 
-        case WM_SYSKEYUP:
-        case WM_KEYUP: _keyChanged((u8)wParam, false); break;
+        case WM_MBUTTONUP:
+        case WM_RBUTTONUP:
+        case WM_LBUTTONUP:
+        case WM_MBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_LBUTTONDOWN:
+        case WM_MBUTTONDBLCLK:
+        case WM_RBUTTONDBLCLK:
+        case WM_LBUTTONDBLCLK:
+            x = GET_X_LPARAM(lParam);
+            y = GET_Y_LPARAM(lParam);
 
-        case WM_MBUTTONUP:     _mouseButtonUp(  &app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_MBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_LBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.left_button,   GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_LBUTTONUP  :   _mouseButtonUp(  &app->controls.mouse.left_button,   GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_RBUTTONDOWN:   _mouseButtonDown(&app->controls.mouse.right_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_RBUTTONUP:     _mouseButtonUp(  &app->controls.mouse.right_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_LBUTTONDBLCLK: _mouseButtonDoubleClicked(&app->controls.mouse.left_button,   GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_RBUTTONDBLCLK: _mouseButtonDoubleClicked(&app->controls.mouse.right_button,  GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_MBUTTONDBLCLK: _mouseButtonDoubleClicked(&app->controls.mouse.middle_button, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); break;
-        case WM_MOUSEWHEEL:    _mouseWheelScrolled((f32)(GET_WHEEL_DELTA_WPARAM(wParam)) / (f32)(WHEEL_DELTA)); break;
+            switch (message) {
+                case WM_MBUTTONUP:
+                case WM_MBUTTONDOWN:
+                case WM_MBUTTONDBLCLK: mouse_button = &app->controls.mouse.middle_button; break;
+                case WM_RBUTTONUP:
+                case WM_RBUTTONDOWN:
+                case WM_RBUTTONDBLCLK: mouse_button = &app->controls.mouse.right_button; break;
+                default: mouse_button = &app->controls.mouse.left_button;
+            }
+
+            switch (message) {
+                case WM_MBUTTONDBLCLK:
+                case WM_RBUTTONDBLCLK:
+                case WM_LBUTTONDBLCLK: mouse_button->doubleClick(x, y); app->controls.mouse.double_clicked = true; if (app->on.mouseButtonDoubleClicked) app->on.mouseButtonDoubleClicked(mouse_button); break;
+                case WM_MBUTTONUP:
+                case WM_RBUTTONUP:
+                case WM_LBUTTONUP:     mouse_button->up(x, y);          if (app->on.mouseButtonUp) app->on.mouseButtonUp(mouse_button); break;
+                default:               mouse_button->down(x, y);        if (app->on.mouseButtonDown) app->on.mouseButtonDown(mouse_button); break;
+            }
+
+            break;
+
+        case WM_MOUSEWHEEL:
+            scroll_amount = (f32)(GET_WHEEL_DELTA_WPARAM(wParam)) / (f32)(WHEEL_DELTA);
+            app->controls.mouse.scroll(scroll_amount); if (app->on.mouseWheelScrolled) app->on.mouseWheelScrolled(scroll_amount);
+            break;
+
         case WM_MOUSEMOVE:
-            _mouseMovementSet(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            _mousePositionSet(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            x = GET_X_LPARAM(lParam);
+            y = GET_Y_LPARAM(lParam);
+            app->controls.mouse.move(x, y);        if (app->on.mouseMovementSet) app->on.mouseMovementSet(x, y);
+            app->controls.mouse.setPosition(x, y); if (app->on.mousePositionSet) app->on.mousePositionSet(x, y);
             break;
 
         case WM_INPUT:
             if ((hasRawMouseInput(lParam)) && (
                     raw_inputs.data.mouse.lLastX != 0 ||
-                    raw_inputs.data.mouse.lLastY != 0))
-                _mouseRawMovementSet(
-                        raw_inputs.data.mouse.lLastX,
-                        raw_inputs.data.mouse.lLastY
-                );
+                    raw_inputs.data.mouse.lLastY != 0)) {
+                x = raw_inputs.data.mouse.lLastX;
+                y = raw_inputs.data.mouse.lLastY;
+                app->controls.mouse.moveRaw(x, y); if (app->on.mouseRawMovementSet) app->on.mouseRawMovementSet(x, y);
+            }
 
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
@@ -206,12 +269,9 @@ int APIENTRY WinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
                      LPSTR     lpCmdLine,
                      int       nCmdShow) {
-
-    void* app_memory = GlobalAlloc(GPTR, sizeof(App));
+    void* app_memory = (unsigned char*)GlobalAlloc(GPTR, sizeof(App));
     if (!app_memory)
         return -1;
-
-    app = (App*)app_memory;
 
     void* window_content_memory = GlobalAlloc(GPTR, RENDER_SIZE);
     if (!window_content_memory)
@@ -219,28 +279,11 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
     LARGE_INTEGER performance_frequency;
     QueryPerformanceFrequency(&performance_frequency);
-    Win32_ticksPerSecond = (u64)performance_frequency.QuadPart;
-
-    app->controls.key_map.space = VK_SPACE;
-    app->controls.key_map.shift = VK_SHIFT;
-    app->controls.key_map.ctrl  = VK_CONTROL;
-    app->controls.key_map.alt   = VK_MENU;
-    app->controls.key_map.tab   = VK_TAB;
-
-    app->platform.ticks_per_second    = Win32_ticksPerSecond;
-    app->platform.getTicks            = Win32_getTicks;
-    app->platform.getMemory           = Win32_getMemory;
-    app->platform.setWindowTitle      = Win32_setWindowTitle;
-    app->platform.setWindowCapture    = Win32_setWindowCapture;
-    app->platform.setCursorVisibility = Win32_setCursorVisibility;
-    app->platform.closeFile           = Win32_closeFile;
-    app->platform.openFileForReading  = Win32_openFileForReading;
-    app->platform.openFileForWriting  = Win32_openFileForWriting;
-    app->platform.readFromFile        = Win32_readFromFile;
-    app->platform.writeToFile         = Win32_writeToFile;
+    os::ticks_per_second = (u64)performance_frequency.QuadPart;
 
     Defaults defaults;
-    _initApp(&defaults, window_content_memory);
+    const KeyMap key_map{VK_CONTROL, VK_MENU, VK_SHIFT, VK_SPACE, VK_TAB};
+    app = new(app_memory) App(key_map, (Pixel*)window_content_memory, &defaults);
 
     info.bmiHeader.biSize        = sizeof(info.bmiHeader);
     info.bmiHeader.biCompression = BI_RGB;
@@ -288,8 +331,6 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
     SetICMMode(win_dc, ICM_OFF);
 
-
-
     ShowWindow(window, nCmdShow);
 
     MSG message;
@@ -298,7 +339,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
             TranslateMessage(&message);
             DispatchMessageA(&message);
         }
-        _windowRedraw();
+        if (app->on.windowRedraw) app->on.windowRedraw();
         InvalidateRgn(window, null, false);
     }
 
