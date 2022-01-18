@@ -1,6 +1,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-
+#ifdef SA_Win11
+#include <dwmapi.h>
+#endif // optional Windows 11 Mica - Make sure to link to dwmapi.lib!
 #ifndef NDEBUG
 #include <tchar.h>
 #include <stdio.h>
@@ -276,6 +278,12 @@ int APIENTRY WinMain(HINSTANCE hInstance,
             hInstance,
             null
     );
+    #ifdef SA_Win11
+        int wDm = 1;
+        int wBgType = 2;
+        DwmSetWindowAttribute(window,20,&wDm,4);
+        DwmSetWindowAttribute(window,38,&wBgType,4);
+    #endif // optional Windows 11 Mica - Make sure to link to dwmapi.lib!
     if (!window)
         return -1;
 
