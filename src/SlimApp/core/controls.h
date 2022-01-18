@@ -86,11 +86,12 @@ struct Mouse {
 };
 
 struct KeyMap {
-    const u8 ctrl, alt, shift, space, tab;
-    KeyMap() = delete;
-    KeyMap(u8 Ctrl, u8 Alt, u8 Shift, u8 Space, u8 Tab) : ctrl(Ctrl), alt(Alt), shift(Shift), space(Space), tab(Tab) {}
+    u8 ctrl = 0,
+       alt = 0,
+       shift = 0,
+       space = 0,
+       tab = 0;
 };
-
 struct IsPressed {
     bool ctrl = false,
          alt = false,
@@ -98,11 +99,8 @@ struct IsPressed {
          space = false,
          tab = false;
 };
-
 struct Controls {
-    const KeyMap key_map;
+    KeyMap key_map;
     IsPressed is_pressed;
     Mouse mouse;
-    Controls() = delete;
-    explicit Controls(const KeyMap km) : key_map(km) {}
 };

@@ -1,18 +1,23 @@
 #include "../SlimApp.h"
 
-static char file_str[4096];
+struct FilesApp : public SlimApp {
+    bool OnReady() override {
+        void* f = os::openFileForReading(__FILE__);
+        os::readFromFile(file_str, file_buffer_size, f);
+        os::closeFile(f);
+        return true;
+    }
 
-void drawFile() {
-    PixelGrid &canvas = app->window_content;
-    canvas.fill(Color(Black));
-    canvas.drawText(Color(Green),
-             file_str, 5, 5);
-}
+    void OnWindowRedraw() override {
+        window_content.fill(Color(Black));
+        window_content.drawText(Color(Green), file_str, 5, 5);
+    }
 
-void App::init(Defaults *defaults) {
-    on.windowRedraw = drawFile;
-    void* f = os::openFileForReading(__FILE__);
-    os::readFromFile(file_str, 4096, f);
-    os::closeFile(f);
-}
+private:
+    static constexpr u32 file_buffer_size = 4096;
+    static char file_str[file_buffer_size];
+};
 
+char FilesApp::file_str[FilesApp::file_buffer_size];
+
+SlimApp* createApp() { return new FilesApp(); }

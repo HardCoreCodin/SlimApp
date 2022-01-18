@@ -524,11 +524,10 @@ struct Dimensions {
 };
 
 struct PixelGrid {
-    Pixel* const pixels;
+    Pixel* pixels = nullptr;
     Dimensions dimensions;
 
-    PixelGrid() = delete;
-    explicit PixelGrid(Pixel* pixels_memory) : pixels(pixels_memory), dimensions(MAX_WIDTH, MAX_HEIGHT) {}
+    PixelGrid() : dimensions(MAX_WIDTH, MAX_HEIGHT) {}
 
     void fill(RGBA color) const {
         for (u32 i = 0; i < dimensions.width_times_height; i++)
@@ -1018,62 +1017,49 @@ struct Mouse {
 };
 
 struct KeyMap {
-    const u8 ctrl, alt, shift, space, tab;
-    KeyMap() = delete;
-    KeyMap(u8 Ctrl, u8 Alt, u8 Shift, u8 Space, u8 Tab) : ctrl(Ctrl), alt(Alt), shift(Shift), space(Space), tab(Tab) {}
+    u8 ctrl = 0,
+       alt = 0,
+       shift = 0,
+       space = 0,
+       tab = 0;
 };
-
 struct IsPressed {
     bool ctrl = false,
-            alt = false,
-            shift = false,
-            space = false,
-            tab = false;
+         alt = false,
+         shift = false,
+         space = false,
+         tab = false;
 };
-
 struct Controls {
-    const KeyMap key_map;
+    KeyMap key_map;
     IsPressed is_pressed;
     Mouse mouse;
-    Controls() = delete;
-    explicit Controls(const KeyMap km) : key_map(km) {}
 };
 
 
-struct Defaults {
-    char* title = (char*)"";
-    u16 width = 480,
-            height = 360;
-    u64 additional_memory_size = 0;
-};
-
-struct AppCallbacks {
-    void (*windowRedraw)() = nullptr;
-    void (*windowResize)(u16 width, u16 height) = nullptr;
-    void (*keyChanged)(  u8 key, bool pressed) = nullptr;
-    void (*mouseButtonUp)(  MouseButton *mouse_button) = nullptr;
-    void (*mouseButtonDown)(MouseButton *mouse_button) = nullptr;
-    void (*mouseButtonDoubleClicked)(MouseButton *mouse_button) = nullptr;
-    void (*mouseWheelScrolled)(f32 amount) = nullptr;
-    void (*mousePositionSet)(i32 x, i32 y) = nullptr;
-    void (*mouseMovementSet)(i32 x, i32 y) = nullptr;
-    void (*mouseRawMovementSet)(i32 x, i32 y) = nullptr;
-};
-
-struct App {
+struct SlimApp {
     Controls controls;
     PixelGrid window_content;
     Time time;
-    AppCallbacks on;
 
     bool is_running = true;
     void *user_data = nullptr;
+    char* window_title = (char*)"";
+    u16 window_width = 480,
+            window_height = 360;
+    u64 additional_memory_size = 0;
 
-//    App() = delete;
-    App(const KeyMap key_map, Pixel* pixels, Defaults *defaults) : controls(key_map), window_content(pixels) {
-        init(defaults);
-    }
-    void init(Defaults *defaults);
+    virtual bool OnReady() { return true; }
+    virtual void OnWindowRedraw() {};
+    virtual void OnWindowResize(u16 width, u16 height) {};
+    virtual void OnKeyChanged(  u8 key, bool pressed) {};
+    virtual void OnMouseButtonUp(  MouseButton *mouse_button) {};
+    virtual void OnMouseButtonDown(MouseButton *mouse_button) {};
+    virtual void OnMouseButtonDoubleClicked(MouseButton *mouse_button) {};
+    virtual void OnMouseWheelScrolled(f32 amount) {};
+    virtual void OnMousePositionSet(i32 x, i32 y) {};
+    virtual void OnMouseMovementSet(i32 x, i32 y) {};
+    virtual void OnMouseRawMovementSet(i32 x, i32 y) {};
 
     bool initMemory(u64 size) {
         if (memory.address) return false;
@@ -1100,7 +1086,8 @@ private:
     Memory memory;
 };
 
-App *app;
+SlimApp* createApp();
+SlimApp *app;
 
 #ifdef __linux__
     //linux code goes here
@@ -1281,8 +1268,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             info.bmiHeader.biWidth = win_rect.right - win_rect.left;
             info.bmiHeader.biHeight = win_rect.top - win_rect.bottom;
             app->window_content.dimensions.update((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
-            if (app->on.windowResize) app->on.windowResize((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
-            if (app->on.windowRedraw) app->on.windowRedraw();
+            app->OnWindowResize((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
+            app->OnWindowRedraw();
 
             break;
 
@@ -1307,7 +1294,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 case VK_TAB    : is_pressed->tab   = pressed; break;
                 default: break;
             }
-            if (app->on.keyChanged) app->on.keyChanged(key, pressed);
+            app->OnKeyChanged(key, pressed);
 
             break;
 
@@ -1336,25 +1323,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             switch (message) {
                 case WM_MBUTTONDBLCLK:
                 case WM_RBUTTONDBLCLK:
-                case WM_LBUTTONDBLCLK: mouse_button->doubleClick(x, y); app->controls.mouse.double_clicked = true; if (app->on.mouseButtonDoubleClicked) app->on.mouseButtonDoubleClicked(mouse_button); break;
+                case WM_LBUTTONDBLCLK: mouse_button->doubleClick(x, y); app->controls.mouse.double_clicked = true; app->OnMouseButtonDoubleClicked(mouse_button); break;
                 case WM_MBUTTONUP:
                 case WM_RBUTTONUP:
-                case WM_LBUTTONUP:     mouse_button->up(x, y);          if (app->on.mouseButtonUp) app->on.mouseButtonUp(mouse_button); break;
-                default:               mouse_button->down(x, y);        if (app->on.mouseButtonDown) app->on.mouseButtonDown(mouse_button); break;
+                case WM_LBUTTONUP:     mouse_button->up(x, y);   app->OnMouseButtonUp(mouse_button); break;
+                default:               mouse_button->down(x, y); app->OnMouseButtonDown(mouse_button); break;
             }
 
             break;
 
         case WM_MOUSEWHEEL:
             scroll_amount = (f32)(GET_WHEEL_DELTA_WPARAM(wParam)) / (f32)(WHEEL_DELTA);
-            app->controls.mouse.scroll(scroll_amount); if (app->on.mouseWheelScrolled) app->on.mouseWheelScrolled(scroll_amount);
+            app->controls.mouse.scroll(scroll_amount); app->OnMouseWheelScrolled(scroll_amount);
             break;
 
         case WM_MOUSEMOVE:
             x = GET_X_LPARAM(lParam);
             y = GET_Y_LPARAM(lParam);
-            app->controls.mouse.move(x, y);        if (app->on.mouseMovementSet) app->on.mouseMovementSet(x, y);
-            app->controls.mouse.setPosition(x, y); if (app->on.mousePositionSet) app->on.mousePositionSet(x, y);
+            app->controls.mouse.move(x, y);        app->OnMouseMovementSet(x, y);
+            app->controls.mouse.setPosition(x, y); app->OnMousePositionSet(x, y);
             break;
 
         case WM_INPUT:
@@ -1363,7 +1350,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     raw_inputs.data.mouse.lLastY != 0)) {
                 x = raw_inputs.data.mouse.lLastX;
                 y = raw_inputs.data.mouse.lLastY;
-                app->controls.mouse.moveRaw(x, y); if (app->on.mouseRawMovementSet) app->on.mouseRawMovementSet(x, y);
+                app->controls.mouse.moveRaw(x, y); app->OnMouseRawMovementSet(x, y);
             }
 
         default:
@@ -1377,10 +1364,6 @@ int APIENTRY WinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
                      LPSTR     lpCmdLine,
                      int       nCmdShow) {
-    void* app_memory = (unsigned char*)GlobalAlloc(GPTR, sizeof(App));
-    if (!app_memory)
-        return -1;
-
     void* window_content_memory = GlobalAlloc(GPTR, RENDER_SIZE);
     if (!window_content_memory)
         return -1;
@@ -1389,9 +1372,14 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     QueryPerformanceFrequency(&performance_frequency);
     os::ticks_per_second = (u64)performance_frequency.QuadPart;
 
-    Defaults defaults;
-    const KeyMap key_map{VK_CONTROL, VK_MENU, VK_SHIFT, VK_SPACE, VK_TAB};
-    app = new(app_memory) App(key_map, (Pixel*)window_content_memory, &defaults);
+    app = createApp();
+    app->window_content.pixels = (Pixel*)window_content_memory;
+    app->controls.key_map.ctrl = VK_CONTROL;
+    app->controls.key_map.alt = VK_MENU;
+    app->controls.key_map.shift = VK_SHIFT;
+    app->controls.key_map.space = VK_SPACE;
+    app->controls.key_map.tab = VK_TAB;
+    if (!app->OnReady()) return -1;
 
     info.bmiHeader.biSize        = sizeof(info.bmiHeader);
     info.bmiHeader.biCompression = BI_RGB;
@@ -1408,13 +1396,13 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
     win_rect.top = 0;
     win_rect.left = 0;
-    win_rect.right  = defaults.width;
-    win_rect.bottom = defaults.height;
+    win_rect.right  = app->window_width;
+    win_rect.bottom = app->window_height;
     AdjustWindowRect(&win_rect, WS_OVERLAPPEDWINDOW, false);
 
     window = CreateWindowA(
             window_class.lpszClassName,
-            defaults.title,
+            app->window_title,
             WS_OVERLAPPEDWINDOW,
 
             CW_USEDEFAULT,
@@ -1447,7 +1435,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
             TranslateMessage(&message);
             DispatchMessageA(&message);
         }
-        if (app->on.windowRedraw) app->on.windowRedraw();
+        app->OnWindowRedraw();
         InvalidateRgn(window, null, false);
     }
 

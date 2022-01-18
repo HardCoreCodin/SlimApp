@@ -1,24 +1,29 @@
 #include "../SlimApp.h"
 
-void timer() {
-    // Track the time difference since last time this was called:
-    Timer &timer = app->time.timers.update;
-    timer.startFrame();
-    static f32 before = 0;
-    f32 now = before + timer.delta_time;
-
-    if ((u32)now > (u32)before) { // If on a seconds border:
-        // Update the window title with the current time:
-        static NumberString number;
-        number = (i32)now;
-        os::setWindowTitle(number.string.char_ptr);
+// To provide custom behaviour, create a sub-struct of SlimApp and override methods:
+struct TimerApp : public SlimApp {
+    bool OnReady() override {
+        // Defaults can also be overridden here
+        window_title = (char*)"0";
+        return true;
     }
-    before = now;
-    timer.endFrame();
-}
 
-void App::init(Defaults *defaults) {
-    on.windowRedraw = timer;
-    defaults->title = (char*)"0";
-}
+    void OnWindowRedraw() override {
+        // Track the time difference since last time this was called:
+        time.timers.update.startFrame();
+        static f32 before = 0;
+        f32 now = before + time.timers.update.delta_time;
 
+        if ((u32)now > (u32)before) { // If on a seconds border:
+            // Update the window title with the current time:
+            static NumberString number;
+            number = (i32)now;
+            os::setWindowTitle(number.string.char_ptr);
+        }
+        before = now;
+        time.timers.update.endFrame();
+    }
+};
+
+// Return an instance of your sub-struct:
+SlimApp* createApp() { return new TimerApp(); }

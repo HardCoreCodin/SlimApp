@@ -1,21 +1,17 @@
 #include "../SlimApp.h"
 
-void showTheAnswer() {
-    // Clear the window content to black:
-    PixelGrid &canvas = app->window_content;
-    canvas.fill(Color(Black));
+struct TextApp : public SlimApp {
+    void OnWindowRedraw() override {
+        // Clear the window content to black:
+        window_content.fill(Color(Black));
 
-    // Draw a multi-colored line of text:
-    canvas.drawText(Color(Green),
-               (char*)"The answer is... :    (!)",
-               100, 50);
-    canvas.drawNumber(Color(Red  ),
-                      42, 270, 50);
-}
+        // Draw a multi-colored line of text:
+        window_content.drawText(Color(Green),
+                        (char*)"The answer is... :    (!)",
+                        100, 50);
+        window_content.drawNumber(Color(Red  ),
+                          42, 270, 50);
+    }
+};
 
-void App::init(Defaults *defaults) {
-    // Tell the app how to draw the window content:
-    on.windowRedraw = showTheAnswer;
-}
-
-
+SlimApp* createApp() { return new TextApp(); }

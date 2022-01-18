@@ -6,40 +6,29 @@
 #include "./core/memory.h"
 #include "./core/controls.h"
 
-struct Defaults {
-    char* title = (char*)"";
-    u16 width = 480,
-        height = 360;
-    u64 additional_memory_size = 0;
-};
-
-struct AppCallbacks {
-    void (*windowRedraw)() = nullptr;
-    void (*windowResize)(u16 width, u16 height) = nullptr;
-    void (*keyChanged)(  u8 key, bool pressed) = nullptr;
-    void (*mouseButtonUp)(  MouseButton *mouse_button) = nullptr;
-    void (*mouseButtonDown)(MouseButton *mouse_button) = nullptr;
-    void (*mouseButtonDoubleClicked)(MouseButton *mouse_button) = nullptr;
-    void (*mouseWheelScrolled)(f32 amount) = nullptr;
-    void (*mousePositionSet)(i32 x, i32 y) = nullptr;
-    void (*mouseMovementSet)(i32 x, i32 y) = nullptr;
-    void (*mouseRawMovementSet)(i32 x, i32 y) = nullptr;
-};
-
-struct App {
+struct SlimApp {
     Controls controls;
     PixelGrid window_content;
     Time time;
-    AppCallbacks on;
 
     bool is_running = true;
     void *user_data = nullptr;
+    char* window_title = (char*)"";
+    u16 window_width = 480,
+            window_height = 360;
+    u64 additional_memory_size = 0;
 
-//    App() = delete;
-    App(const KeyMap key_map, Pixel* pixels, Defaults *defaults) : controls(key_map), window_content(pixels) {
-        init(defaults);
-    }
-    void init(Defaults *defaults);
+    virtual bool OnReady() { return true; }
+    virtual void OnWindowRedraw() {};
+    virtual void OnWindowResize(u16 width, u16 height) {};
+    virtual void OnKeyChanged(  u8 key, bool pressed) {};
+    virtual void OnMouseButtonUp(  MouseButton *mouse_button) {};
+    virtual void OnMouseButtonDown(MouseButton *mouse_button) {};
+    virtual void OnMouseButtonDoubleClicked(MouseButton *mouse_button) {};
+    virtual void OnMouseWheelScrolled(f32 amount) {};
+    virtual void OnMousePositionSet(i32 x, i32 y) {};
+    virtual void OnMouseMovementSet(i32 x, i32 y) {};
+    virtual void OnMouseRawMovementSet(i32 x, i32 y) {};
 
     bool initMemory(u64 size) {
         if (memory.address) return false;
@@ -66,6 +55,7 @@ private:
     Memory memory;
 };
 
-App *app;
+SlimApp* createApp();
+SlimApp *app;
 
 #include "./platforms/win32.h"

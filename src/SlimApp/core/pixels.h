@@ -42,11 +42,10 @@ struct Dimensions {
 };
 
 struct PixelGrid {
-    Pixel* const pixels;
+    Pixel* pixels = nullptr;
     Dimensions dimensions;
 
-    PixelGrid() = delete;
-    explicit PixelGrid(Pixel* pixels_memory) : pixels(pixels_memory), dimensions(MAX_WIDTH, MAX_HEIGHT) {}
+    PixelGrid() : dimensions(MAX_WIDTH, MAX_HEIGHT) {}
 
     void fill(RGBA color) const {
         for (u32 i = 0; i < dimensions.width_times_height; i++)
