@@ -1,12 +1,19 @@
 #include "../SlimApp.h"
 
 struct GameApp : public SlimApp {
-    struct NavigationKeys { u8 left, right, up, down; };
+    struct NavigationKeys {
+        u8 left,
+           right,
+           up,
+           down;
+    };
+
     struct Player {
         f32 size = 10;
         f32 speed = 80;
         vec2 pos{20, 20};
     };
+
     struct Game {
         NavigationKeys keys{'A','D', 'W', 'S'};
         NavigationKeys move{false, false, false, false};
@@ -71,3 +78,6 @@ struct GameApp : public SlimApp {
 };
 
 SlimApp* createApp() { return new GameApp(); }
+
+
+

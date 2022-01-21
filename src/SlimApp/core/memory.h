@@ -18,9 +18,9 @@ struct Memory {
         capacity = Capacity;
     }
     void* allocate(u64 size) {
-        if (!address) return null;
+        if (!address) return nullptr;
         occupied += size;
-        if (occupied > capacity) return null;
+        if (occupied > capacity) return nullptr;
 
         void* current_address = address;
         address += size;

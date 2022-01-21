@@ -156,7 +156,9 @@ struct PixelGrid {
             }
         }
     }
-
+    INLINE void drawLine(RGBA color, vec2i src, vec2i trg) {
+        return drawLine2D(color, src.x, src.y, trg.x, trg.y);
+    }
     void drawRect(RGBA color, Rect &rect) {
         if (rect.max.x < 0 || rect.min.x >= dimensions.width ||
             rect.max.y < 0 || rect.min.y >= dimensions.height)
@@ -301,7 +303,7 @@ struct PixelGrid {
         }
     }
 
-    void fillCircle(RGBA color, i32 center_x, i32 center_y, i32 radius) {
+    void fillCircle(RGBA color, i32 center_x, i32 center_y, i32 radius) const {
         if (radius <= 1) {
             if (inRange(0, center_x, dimensions.width - 1) &&
                 inRange(0, center_y, dimensions.height - 1))
@@ -361,8 +363,10 @@ struct PixelGrid {
             Ex2 += 1;
         }
     }
-
-    void drawText(RGBA color, char *str, i32 x, i32 y) {
+    INLINE void fillCircle(RGBA color, vec2i center, i32 radius) const {
+        return fillCircle(color, center.x, center.y, radius);
+    }
+    void drawText(RGBA color, char *str, i32 x, i32 y) const {
         if (x < 0 || x > dimensions.width - FONT_WIDTH ||
             y < 0 || y > dimensions.height - FONT_HEIGHT)
             return;

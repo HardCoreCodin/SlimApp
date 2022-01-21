@@ -37,13 +37,6 @@ ENABLE_FP_CONTRACT
 #define fast_mul_add(a, b, c) ((a) * (b) + (c))
 #endif
 
-#ifdef __cplusplus
-#define null nullptr
-#else
-#define null 0
-    typedef unsigned char      bool;
-#endif
-
 typedef unsigned char      u8;
 typedef unsigned short     u16;
 typedef unsigned long int  u32;
@@ -54,13 +47,6 @@ typedef signed   long int  i32;
 typedef float  f32;
 typedef double f64;
 
-#ifndef false
-#define false (u8)0
-#endif
-
-#ifndef true
-#define true (u8)1
-#endif
 
 #define FONT_HEIGHT 8
 #define FONT_WIDTH 8
@@ -153,11 +139,253 @@ struct os {
 
 u64 os::ticks_per_second{0};
 
+INLINE f32 approach(f32 src, f32 trg, f32 diff) {
+    f32 out;
+
+    out = src + diff; if (trg > out) return out;
+    out = src - diff; if (trg < out) return out;
+
+    return trg;
+}
+
 #define MAX_COLOR_VALUE 0xFF
 
+#ifndef INCLUDE_SLIMAPP_MATH
+#include <cmath>
+
+struct vec2i {
+    i32 x = 0, y = 0;
+
+    vec2i() : x(0), y(0) {}
+    explicit vec2i(i32 X, i32 Y) : x(X), y(Y) {}
+    explicit vec2i(i32 value) : x(value), y(value) {}
+    INLINE vec2i operator!() const { return vec2i{-x, -y}; }
+    INLINE vec2i operator~() const { return this->perp(); }
+    INLINE bool operator==(vec2i other) const { return other.x == x && other.y == y; }
+    INLINE vec2i& operator-=(vec2i rhs) { x -= rhs.x; y -= rhs.y; return *this; }
+    INLINE vec2i& operator+=(vec2i rhs) { x += rhs.x; y += rhs.y; return *this; }
+    INLINE vec2i& operator*=(vec2i rhs) { x *= rhs.x; y *= rhs.y; return *this; }
+    INLINE vec2i& operator/=(vec2i rhs) { x /= rhs.x; y /= rhs.y; return *this; }
+    INLINE vec2i& operator-=(i32 rhs) { x -= rhs; y -= rhs; return *this; }
+    INLINE vec2i& operator+=(i32 rhs) { x += rhs; y += rhs; return *this; }
+    INLINE vec2i& operator*=(i32 rhs) { x *= rhs; y *= rhs; return *this; }
+    INLINE vec2i& operator/=(i32 rhs) { x /= rhs; y /= rhs; return *this; }
+    INLINE vec2i operator-(vec2i rhs) const { return vec2i{x - rhs.x, y - rhs.y}; }
+    INLINE vec2i operator+(vec2i rhs) const { return vec2i{x + rhs.x, y + rhs.y}; }
+    INLINE vec2i operator*(vec2i rhs) const { return vec2i{x * rhs.x, y * rhs.y}; }
+    INLINE vec2i operator/(vec2i rhs) const { return vec2i{x / rhs.x, y / rhs.y}; }
+    INLINE vec2i operator-(i32 rhs) const { return vec2i{x - rhs, y - rhs}; }
+    INLINE vec2i operator+(i32 rhs) const { return vec2i{x + rhs, y + rhs}; }
+    INLINE vec2i operator*(i32 rhs) const { return vec2i{x * rhs, y * rhs}; }
+    INLINE vec2i operator/(i32 rhs) const { return vec2i{x / rhs, y / rhs}; }
+
+    INLINE vec2i operator-(f32 rhs) const { return vec2i{x - (i32)rhs, y - (i32)rhs}; }
+    INLINE vec2i operator+(f32 rhs) const { return vec2i{x + (i32)rhs, y + (i32)rhs}; }
+    INLINE vec2i operator*(f32 rhs) const { return vec2i{x * (i32)rhs, y * (i32)rhs}; }
+    INLINE vec2i operator/(f32 rhs) const { return vec2i{x / (i32)rhs, y / (i32)rhs}; }
+    INLINE vec2i& operator-=(f32 rhs) { x -= (i32)rhs; y -= (i32)rhs; return *this; }
+    INLINE vec2i& operator+=(f32 rhs) { x += (i32)rhs; y += (i32)rhs; return *this; }
+    INLINE vec2i& operator*=(f32 rhs) { x *= (i32)rhs; y *= (i32)rhs; return *this; }
+    INLINE vec2i& operator/=(f32 rhs) { x /= (i32)rhs; y /= (i32)rhs; return *this; }
+
+    INLINE bool nonZero() const { return x != 0 || y != 0; }
+    INLINE vec2i perp() const { return vec2i{-y, x}; }
+    INLINE i32 min() const { return x < y ? x : y; }
+    INLINE i32 max() const { return x > y ? x : y; }
+    INLINE i32 length() const { return (i32)sqrtf((f32)(x*x + y*y)); }
+    INLINE i32 squaredLength() const { return x*x + y*y; }
+    INLINE vec2i cloned() const { return vec2i{x, y}; }
+    INLINE vec2i clampedToZero() const { return vec2i{x > 0 ? x : 0, y > 0 ? y : 0 }; }
+    INLINE vec2i clampedToUpper(vec2i upper) const { return vec2i{x < upper.x ? x : upper.x, y < upper.y ? y : upper.y }; }
+    INLINE vec2i clampedToRange(const i32 min_value, const i32 max_value) const {
+        vec2i out{x > min_value ? x : min_value, y > min_value ? y : min_value};
+        out.x = out.x < max_value ? out.x : max_value;
+        out.y = out.y < max_value ? out.y : max_value;
+        return *this;
+    }
+    INLINE vec2i scaleAdd(f32 factor, vec2i to_be_added) const {
+        return vec2i{
+                (i32)fast_mul_add((f32)x, factor, (f32)to_be_added.x),
+                (i32)fast_mul_add((f32)y, factor, (f32)to_be_added.y)
+        };
+    }
+};
+
+
+struct mat2;
+struct vec2 {
+    f32 x = 0, y = 0;
+
+    explicit vec2(f32 X, f32 Y) : x(X), y(Y) {}
+    explicit vec2(f32 value) : x(value), y(value) {}
+    explicit vec2(vec2i v) : x((f32)v.x), y((f32)v.y) {}
+    INLINE bool operator==(vec2 other) const { return other.x == x && other.y == y; }
+    INLINE f32 operator|(vec2 rhs) const { return dot(rhs); }
+    INLINE f32 operator^(vec2 rhs) const { return cross(rhs); }
+    INLINE vec2 operator%(vec2 rhs) const { return reflectAround(rhs); }
+    INLINE vec2 operator!() const { return vec2{-x, -y}; }
+    INLINE vec2 operator~() const { return this->perp(); }
+    INLINE vec2 operator-(vec2 rhs) const { return vec2{x - rhs.x, y - rhs.y}; }
+    INLINE vec2 operator+(vec2 rhs) const { return vec2{x + rhs.x, y + rhs.y}; }
+    INLINE vec2 operator*(vec2 rhs) const { return vec2{x * rhs.x, y * rhs.y}; }
+    INLINE vec2 operator/(vec2 rhs) const { return vec2{x / rhs.x, y / rhs.y}; }
+    INLINE vec2& operator-=(vec2 rhs) { x -= rhs.x; y -= rhs.y; return *this; }
+    INLINE vec2& operator+=(vec2 rhs) { x += rhs.x; y += rhs.y; return *this; }
+    INLINE vec2& operator*=(vec2 rhs) { x *= rhs.x; y *= rhs.y; return *this; }
+    INLINE vec2& operator/=(vec2 rhs) { x /= rhs.x; y /= rhs.y; return *this; }
+    INLINE vec2 operator-(f32 rhs) const { return vec2{x - rhs, y - rhs}; }
+    INLINE vec2 operator+(f32 rhs) const { return vec2{x + rhs, y + rhs}; }
+    INLINE vec2 operator*(f32 rhs) const { return vec2{x * rhs, y * rhs}; }
+    INLINE vec2 operator/(f32 rhs) const { return vec2{x / rhs, y / rhs}; }
+    INLINE vec2& operator-=(f32 rhs) { x -= rhs; y -= rhs; return *this; }
+    INLINE vec2& operator+=(f32 rhs) { x += rhs; y += rhs; return *this; }
+    INLINE vec2& operator*=(f32 rhs) { x *= rhs; y *= rhs; return *this; }
+    INLINE vec2& operator/=(f32 rhs) { x /= rhs; y /= rhs; return *this; }
+
+    INLINE vec2 operator-(vec2i rhs) const { return vec2{x - (f32)rhs.x, y - (f32)rhs.y}; }
+    INLINE vec2 operator+(vec2i rhs) const { return vec2{x + (f32)rhs.x, y + (f32)rhs.y}; }
+    INLINE vec2 operator*(vec2i rhs) const { return vec2{x * (f32)rhs.x, y * (f32)rhs.y}; }
+    INLINE vec2 operator/(vec2i rhs) const { return vec2{x / (f32)rhs.x, y / (f32)rhs.y}; }
+    INLINE vec2& operator-=(vec2i rhs) { x -= (f32)rhs.x; y -= (f32)rhs.y; return *this; }
+    INLINE vec2& operator+=(vec2i rhs) { x += (f32)rhs.x; y += (f32)rhs.y; return *this; }
+    INLINE vec2& operator*=(vec2i rhs) { x *= (f32)rhs.x; y *= (f32)rhs.y; return *this; }
+    INLINE vec2& operator/=(vec2i rhs) { x /= (f32)rhs.x; y /= (f32)rhs.y; return *this; }
+    INLINE vec2 operator-(i32 rhs) const { return vec2{x - (f32)rhs, y - (f32)rhs}; }
+    INLINE vec2 operator+(i32 rhs) const { return vec2{x + (f32)rhs, y + (f32)rhs}; }
+    INLINE vec2 operator*(i32 rhs) const { return vec2{x * (f32)rhs, y * (f32)rhs}; }
+    INLINE vec2 operator/(i32 rhs) const { return vec2{x / (f32)rhs, y / (f32)rhs}; }
+    INLINE vec2& operator-=(i32 rhs) { x -= (f32)rhs; y -= (f32)rhs; return *this; }
+    INLINE vec2& operator+=(i32 rhs) { x += (f32)rhs; y += (f32)rhs; return *this; }
+    INLINE vec2& operator*=(i32 rhs) { x *= (f32)rhs; y *= (f32)rhs; return *this; }
+    INLINE vec2& operator/=(i32 rhs) { x /= (f32)rhs; y /= (f32)rhs; return *this; }
+
+    INLINE bool nonZero() const { return x != 0.0f || y != 0.0f; }
+    INLINE vec2 perp() const { return vec2{-y, x}; }
+    INLINE f32 min() const { return x < y ? x : y; }
+    INLINE f32 max() const { return x > y ? x : y; }
+    INLINE f32 dot(vec2 rhs) const { return (x * rhs.x) + (y * rhs.y); }
+    INLINE f32 cross(vec2 rhs) const { return (x * rhs.y) - (y * rhs.x); }
+    INLINE f32 length() const { return sqrtf(x*x + y*y); }
+    INLINE f32 squaredLength() const { return x*x + y*y; }
+    INLINE vec2 cloned() const { return vec2{x, y}; }
+    INLINE vec2 normalized() const { f32 f = sqrtf(x*x + y*y); return vec2{x * f, y * f}; }
+    INLINE f32 clampedDot(vec2 rhs) const { f32 r = x*rhs.x + y*rhs.y; r = r < 0 ? 0 : r; return r > 1 ? 1 : r; }
+    INLINE vec2 clampedToZero() const { return vec2{x > 0.0f ? x : 0.0f, y > 0.0f ? y : 0.0f }; }
+    INLINE vec2 clampedToUpper(vec2 upper) const { return vec2{x < upper.x ? x : upper.x, y < upper.y ? y : upper.y }; }
+    INLINE vec2 clampedToRange(const f32 min_value, const f32 max_value) const {
+        vec2 out{x > min_value ? x : min_value, y > min_value ? y : min_value};
+        out.x = out.x < max_value ? out.x : max_value;
+        out.y = out.y < max_value ? out.y : max_value;
+        return *this;
+    }
+    INLINE vec2 reflectAround(vec2 N) const {
+        f32 f = -2 * (x * N.x + y * N.y);
+        return vec2{
+                fast_mul_add(N.x, f, x),
+                fast_mul_add(N.y, f, y)
+        };
+    }
+    INLINE vec2 clamped() const {
+        vec2 out{x > 0.0f ? x : 0.0f, y > 0.0f ? y : 0.0f};
+        out.x = out.x < 1.0f ? out.x : 1.0f;
+        out.y = out.y < 1.0f ? out.y : 1.0f;
+        return *this;
+    }
+    INLINE vec2 approachTo(vec2 trg, f32 diff) const {
+        return vec2{
+                approach(x, trg.x, diff),
+                approach(y, trg.y, diff)
+        };
+    }
+    INLINE vec2 scaleAdd(f32 factor, vec2 to_be_added) const {
+        return vec2{
+                fast_mul_add(x, factor, to_be_added.x),
+                fast_mul_add(y, factor, to_be_added.y)
+        };
+    }
+};
+
+INLINE vec2 min(vec2 a, vec2 b) { return vec2{a.x < b.x ? a.x : b.x, a.y < b.y ? a.y : b.y}; }
+INLINE vec2 max(vec2 a, vec2 b) { return vec2{a.x > b.x ? a.x : b.x, a.y > b.y ? a.y : b.y}; }
+
+INLINE vec2i operator-(vec2i lhs, vec2 rhs) { return vec2i{lhs.x - (i32)rhs.x, lhs.y - (i32)rhs.y}; }
+INLINE vec2i operator+(vec2i lhs, vec2 rhs) { return vec2i{lhs.x + (i32)rhs.x, lhs.y + (i32)rhs.y}; }
+INLINE vec2i operator*(vec2i lhs, vec2 rhs) { return vec2i{lhs.x * (i32)rhs.x, lhs.y * (i32)rhs.y}; }
+INLINE vec2i operator/(vec2i lhs, vec2 rhs) { return vec2i{lhs.x / (i32)rhs.x, lhs.y / (i32)rhs.y}; }
+
+INLINE vec2i operator-(i32 lhs, vec2 rhs) { return vec2i{lhs - (i32)rhs.x, lhs - (i32)rhs.y}; }
+INLINE vec2i operator+(i32 lhs, vec2 rhs) { return vec2i{lhs + (i32)rhs.x, lhs + (i32)rhs.y}; }
+INLINE vec2i operator*(i32 lhs, vec2 rhs) { return vec2i{lhs * (i32)rhs.x, lhs * (i32)rhs.y}; }
+INLINE vec2i operator/(i32 lhs, vec2 rhs) { return vec2i{lhs / (i32)rhs.x, lhs / (i32)rhs.y}; }
+
+INLINE vec2i operator-(i32 lhs, vec2i rhs) { return vec2i{lhs - rhs.x, lhs - rhs.y}; }
+INLINE vec2i operator+(i32 lhs, vec2i rhs) { return vec2i{lhs + rhs.x, lhs + rhs.y}; }
+INLINE vec2i operator*(i32 lhs, vec2i rhs) { return vec2i{lhs * rhs.x, lhs * rhs.y}; }
+INLINE vec2i operator/(i32 lhs, vec2i rhs) { return vec2i{lhs / rhs.x, lhs / rhs.y}; }
+
+INLINE vec2 operator-(f32 lhs, vec2 rhs) { return vec2{lhs - rhs.x, lhs - rhs.y}; }
+INLINE vec2 operator+(f32 lhs, vec2 rhs) { return vec2{lhs + rhs.x, lhs + rhs.y}; }
+INLINE vec2 operator*(f32 lhs, vec2 rhs) { return vec2{lhs * rhs.x, lhs * rhs.y}; }
+INLINE vec2 operator/(f32 lhs, vec2 rhs) { return vec2{lhs / rhs.x, lhs / rhs.y}; }
+
+struct mat2 {
+    union {
+        vec2 axis[2];
+        struct {
+            vec2 X, Y;
+        };
+    };
+
+    explicit mat2(vec2 x, vec2 y) : X(x), Y(y) {}
+};
+
+INLINE vec2 operator*(vec2 v, mat2 m) { return vec2{v.x*m.X.x + v.y*m.Y.x, v.x*m.X.y + v.y*m.Y.y}; }
+INLINE mat2 outer(vec2 a, vec2 b) { return mat2{vec2{a.x*b.x, a.y*b.x}, vec2{a.x*b.y, a.y*b.y}}; }
+
+#else
 struct vec2  { f32 x = 0, y = 0; };
 struct vec2i { i32 x = 0, y = 0; };
-struct Rect { vec2i min, max; };
+#endif
+
+struct Rect {
+    vec2i min, max;
+    Rect() : min(vec2i{0,0,}), max(vec2i{0,0,}) {}
+    explicit Rect(vec2i min, vec2i max) : min(min), max(max) {}
+    INLINE bool contains(vec2i p) const { return p.x >= min.x && p.x <= max.x && p.y >= min.y && p.y <= max.y; }
+    INLINE bool bounds(vec2i p) const { return p.x > min.x && p.x < max.x && p.y > min.y && p.y < max.y; }
+    INLINE bool is_zero() const { return min.x == max.x && min.y == max.y; }
+    INLINE bool operator!() const { return is_zero(); }
+    INLINE bool operator[](vec2i p) const { return contains(p); }
+    INLINE bool operator()(vec2i p) const { return bounds(p); }
+};
+
+INLINE Rect operator>>(vec2i min, vec2i max) { return Rect{min, max}; }
+INLINE Rect operator<<(vec2i max, vec2i min) { return Rect{min, max}; }
+
+struct RangeI {
+    i32 from = 0, to = 0;
+    RangeI() : from(0), to(0) {}
+    explicit RangeI(i32 from, i32 to) : from(from), to(to) {}
+    INLINE bool contains(i32 v) const { return from <= v && v <= to; }
+    INLINE bool bounds(i32 v) const { return from < v && v < to; }
+    INLINE bool is_zero() const { return from == 0 && to == 0; }
+    INLINE bool operator!() const { return is_zero(); }
+    INLINE bool operator[](i32 v) const { return contains(v); }
+    INLINE bool operator()(i32 v) const { return bounds(v); }
+};
+
+struct Range {
+    f32 from = 0, to = 0;
+    Range() : from(0), to(0) {}
+    explicit Range(f32 from, f32 to) : from(from), to(to) {}
+    INLINE bool contains(f32 v) const { return from <= v && v <= to; }
+    INLINE bool bounds(f32 v) const { return from < v && v < to; }
+    INLINE bool is_zero() const { return from == 0 && to == 0; }
+    INLINE bool operator!() const { return is_zero(); }
+    INLINE bool operator[](f32 v) const { return contains(v); }
+    INLINE bool operator()(f32 v) const { return bounds(v); }
+};
+
 struct RGBA { u8 B, G, R, A; };
 union  Pixel { RGBA color; u32 value; };
 
@@ -175,8 +403,8 @@ void subRange(i32 from, i32 to, i32 end, i32 start, i32 *first, i32 *last) {
     *last  = (*last < end ? *last : end) - 1;
 }
 
-INLINE bool inRange(i32 value, i32 end, i32 start) {
-    return value >= start && value < end;
+INLINE bool inRange(i32 value, i32 end, i32 start = 0) {
+    return start <= value && value < end;
 }
 
 enum ColorID {
@@ -638,7 +866,9 @@ struct PixelGrid {
             }
         }
     }
-
+    INLINE void drawLine(RGBA color, vec2i src, vec2i trg) {
+        return drawLine2D(color, src.x, src.y, trg.x, trg.y);
+    }
     void drawRect(RGBA color, Rect &rect) {
         if (rect.max.x < 0 || rect.min.x >= dimensions.width ||
             rect.max.y < 0 || rect.min.y >= dimensions.height)
@@ -716,7 +946,7 @@ struct PixelGrid {
         }
     }
 
-    void drawCircle(RGBA color, i32 center_x, i32 center_y, i32 radius) {
+    void drawCircle(RGBA color, i32 center_x, i32 center_y, i32 radius) const {
         if (radius <= 1) {
             if (inRange(0, center_x, dimensions.width - 1) &&
                 inRange(0, center_y, dimensions.height - 1))
@@ -782,8 +1012,10 @@ struct PixelGrid {
             Ex2 += 1;
         }
     }
-
-    void fillCircle(RGBA color, i32 center_x, i32 center_y, i32 radius) {
+    INLINE void drawCircle(RGBA color, vec2i center, i32 radius) const {
+        return drawCircle(color, center.x, center.y, radius);
+    }
+    void fillCircle(RGBA color, i32 center_x, i32 center_y, i32 radius) const {
         if (radius <= 1) {
             if (inRange(0, center_x, dimensions.width - 1) &&
                 inRange(0, center_y, dimensions.height - 1))
@@ -843,8 +1075,10 @@ struct PixelGrid {
             Ex2 += 1;
         }
     }
-
-    void drawText(RGBA color, char *str, i32 x, i32 y) {
+    INLINE void fillCircle(RGBA color, vec2i center, i32 radius) const {
+        return fillCircle(color, center.x, center.y, radius);
+    }
+    void drawText(RGBA color, char *str, i32 x, i32 y) const {
         if (x < 0 || x > dimensions.width - FONT_WIDTH ||
             y < 0 || y > dimensions.height - FONT_HEIGHT)
             return;
@@ -921,9 +1155,9 @@ struct Memory {
         capacity = Capacity;
     }
     void* allocate(u64 size) {
-        if (!address) return null;
+        if (!address) return nullptr;
         occupied += size;
-        if (occupied > capacity) return null;
+        if (occupied > capacity) return nullptr;
 
         void* current_address = address;
         address += size;
@@ -1079,7 +1313,7 @@ struct SlimApp {
         if (new_memory) return new_memory;
 
         is_running = false;
-        return null;
+        return nullptr;
     }
 
 private:
@@ -1111,9 +1345,9 @@ void DisplayError(LPTSTR lpszFunction) {
             FORMAT_MESSAGE_ALLOCATE_BUFFER |
             FORMAT_MESSAGE_FROM_SYSTEM |
             FORMAT_MESSAGE_IGNORE_INSERTS,
-            null, last_error,
+            nullptr, last_error,
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            (LPTSTR) &lpMsgBuf, 0, null);
+            (LPTSTR) &lpMsgBuf, 0, nullptr);
 
     lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
 
@@ -1190,15 +1424,15 @@ void* os::openFileForReading(const char* path) {
     HANDLE handle = CreateFile(path,           // file to open
                                GENERIC_READ,          // open for reading
                                FILE_SHARE_READ,       // share for reading
-                               null,                  // default security
+                               nullptr,                  // default security
                                OPEN_EXISTING,         // existing file only
                                FILE_ATTRIBUTE_NORMAL, // normal file
-                               null);                 // no attr. template
+                               nullptr);                 // no attr. template
 #ifndef NDEBUG
     if (handle == INVALID_HANDLE_VALUE) {
         DisplayError(TEXT((LPTSTR)"CreateFile"));
         _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for read.\n"), path);
-        return null;
+        return nullptr;
     }
 #endif
     return handle;
@@ -1208,15 +1442,15 @@ void* os::openFileForWriting(const char* path) {
     HANDLE handle = CreateFile(path,           // file to open
                                GENERIC_WRITE,          // open for writing
                                0,                      // do not share
-                               null,                   // default security
+                               nullptr,                   // default security
                                OPEN_ALWAYS,            // create new or open existing
                                FILE_ATTRIBUTE_NORMAL,  // normal file
-                               null);
+                               nullptr);
 #ifndef NDEBUG
     if (handle == INVALID_HANDLE_VALUE) {
         DisplayError(TEXT((LPTSTR)"CreateFile"));
         _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for write.\n"), path);
-        return null;
+        return nullptr;
     }
 #endif
     return handle;
@@ -1224,7 +1458,7 @@ void* os::openFileForWriting(const char* path) {
 
 bool os::readFromFile(LPVOID out, DWORD size, HANDLE handle) {
     DWORD bytes_read = 0;
-    BOOL result = ReadFile(handle, out, size, &bytes_read, null);
+    BOOL result = ReadFile(handle, out, size, &bytes_read, nullptr);
 #ifndef NDEBUG
     if (result == FALSE) {
         DisplayError(TEXT((LPTSTR)"ReadFile"));
@@ -1237,7 +1471,7 @@ bool os::readFromFile(LPVOID out, DWORD size, HANDLE handle) {
 
 bool os::writeToFile(LPVOID out, DWORD size, HANDLE handle) {
     DWORD bytes_written = 0;
-    BOOL result = WriteFile(handle, out, size, &bytes_written, null);
+    BOOL result = WriteFile(handle, out, size, &bytes_written, nullptr);
 #ifndef NDEBUG
     if (result == FALSE) {
         DisplayError(TEXT((LPTSTR)"WriteFile"));
@@ -1279,7 +1513,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                               0, 0, 0, app->window_content.dimensions.height,
                               (u32*)app->window_content.pixels, &info, DIB_RGB_COLORS);
 
-            ValidateRgn(window, null);
+            ValidateRgn(window, nullptr);
             break;
 
         case WM_SYSKEYDOWN:
@@ -1390,7 +1624,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     window_class.hInstance      = hInstance;
     window_class.lpfnWndProc    = WndProc;
     window_class.style          = CS_OWNDC|CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;
-    window_class.hCursor        = LoadCursorA(null, IDC_ARROW);
+    window_class.hCursor        = LoadCursorA(nullptr, IDC_ARROW);
 
     if (!RegisterClassA(&window_class)) return -1;
 
@@ -1410,10 +1644,10 @@ int APIENTRY WinMain(HINSTANCE hInstance,
             win_rect.right - win_rect.left,
             win_rect.bottom - win_rect.top,
 
-            null,
-            null,
+            nullptr,
+            nullptr,
             hInstance,
-            null
+            nullptr
     );
     if (!window)
         return -1;
@@ -1431,12 +1665,12 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
     MSG message;
     while (app->is_running) {
-        while (PeekMessageA(&message, null, 0, 0, PM_REMOVE)) {
+        while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&message);
             DispatchMessageA(&message);
         }
         app->OnWindowRedraw();
-        InvalidateRgn(window, null, false);
+        InvalidateRgn(window, nullptr, false);
     }
 
     return 0;

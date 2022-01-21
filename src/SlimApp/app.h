@@ -48,7 +48,7 @@ struct SlimApp {
         if (new_memory) return new_memory;
 
         is_running = false;
-        return null;
+        return nullptr;
     }
 
 private:

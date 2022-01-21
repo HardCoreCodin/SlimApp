@@ -16,9 +16,9 @@ void DisplayError(LPTSTR lpszFunction) {
             FORMAT_MESSAGE_ALLOCATE_BUFFER |
             FORMAT_MESSAGE_FROM_SYSTEM |
             FORMAT_MESSAGE_IGNORE_INSERTS,
-            null, last_error,
+            nullptr, last_error,
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            (LPTSTR) &lpMsgBuf, 0, null);
+            (LPTSTR) &lpMsgBuf, 0, nullptr);
 
     lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
 
@@ -95,15 +95,15 @@ void* os::openFileForReading(const char* path) {
     HANDLE handle = CreateFile(path,           // file to open
                                GENERIC_READ,          // open for reading
                                FILE_SHARE_READ,       // share for reading
-                               null,                  // default security
+                               nullptr,                  // default security
                                OPEN_EXISTING,         // existing file only
                                FILE_ATTRIBUTE_NORMAL, // normal file
-                               null);                 // no attr. template
+                               nullptr);                 // no attr. template
 #ifndef NDEBUG
     if (handle == INVALID_HANDLE_VALUE) {
         DisplayError(TEXT((LPTSTR)"CreateFile"));
         _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for read.\n"), path);
-        return null;
+        return nullptr;
     }
 #endif
     return handle;
@@ -113,15 +113,15 @@ void* os::openFileForWriting(const char* path) {
     HANDLE handle = CreateFile(path,           // file to open
                                GENERIC_WRITE,          // open for writing
                                0,                      // do not share
-                               null,                   // default security
+                               nullptr,                   // default security
                                OPEN_ALWAYS,            // create new or open existing
                                FILE_ATTRIBUTE_NORMAL,  // normal file
-                               null);
+                               nullptr);
 #ifndef NDEBUG
     if (handle == INVALID_HANDLE_VALUE) {
         DisplayError(TEXT((LPTSTR)"CreateFile"));
         _tprintf(TEXT("Terminal failure: unable to open file \"%s\" for write.\n"), path);
-        return null;
+        return nullptr;
     }
 #endif
     return handle;
@@ -129,7 +129,7 @@ void* os::openFileForWriting(const char* path) {
 
 bool os::readFromFile(LPVOID out, DWORD size, HANDLE handle) {
     DWORD bytes_read = 0;
-    BOOL result = ReadFile(handle, out, size, &bytes_read, null);
+    BOOL result = ReadFile(handle, out, size, &bytes_read, nullptr);
 #ifndef NDEBUG
     if (result == FALSE) {
         DisplayError(TEXT((LPTSTR)"ReadFile"));
@@ -142,7 +142,7 @@ bool os::readFromFile(LPVOID out, DWORD size, HANDLE handle) {
 
 bool os::writeToFile(LPVOID out, DWORD size, HANDLE handle) {
     DWORD bytes_written = 0;
-    BOOL result = WriteFile(handle, out, size, &bytes_written, null);
+    BOOL result = WriteFile(handle, out, size, &bytes_written, nullptr);
 #ifndef NDEBUG
     if (result == FALSE) {
         DisplayError(TEXT((LPTSTR)"WriteFile"));
@@ -184,7 +184,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                               0, 0, 0, app->window_content.dimensions.height,
                               (u32*)app->window_content.pixels, &info, DIB_RGB_COLORS);
 
-            ValidateRgn(window, null);
+            ValidateRgn(window, nullptr);
             break;
 
         case WM_SYSKEYDOWN:
@@ -295,7 +295,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     window_class.hInstance      = hInstance;
     window_class.lpfnWndProc    = WndProc;
     window_class.style          = CS_OWNDC|CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;
-    window_class.hCursor        = LoadCursorA(null, IDC_ARROW);
+    window_class.hCursor        = LoadCursorA(nullptr, IDC_ARROW);
 
     if (!RegisterClassA(&window_class)) return -1;
 
@@ -315,10 +315,10 @@ int APIENTRY WinMain(HINSTANCE hInstance,
             win_rect.right - win_rect.left,
             win_rect.bottom - win_rect.top,
 
-            null,
-            null,
+            nullptr,
+            nullptr,
             hInstance,
-            null
+            nullptr
     );
     if (!window)
         return -1;
@@ -336,12 +336,12 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
     MSG message;
     while (app->is_running) {
-        while (PeekMessageA(&message, null, 0, 0, PM_REMOVE)) {
+        while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&message);
             DispatchMessageA(&message);
         }
         app->OnWindowRedraw();
-        InvalidateRgn(window, null, false);
+        InvalidateRgn(window, nullptr, false);
     }
 
     return 0;
