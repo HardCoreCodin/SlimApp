@@ -1,21 +1,23 @@
 #pragma once
 
+#include "./base.h"
+
 struct PerTick {
     const f64 seconds, milliseconds, microseconds, nanoseconds;
     PerTick() = delete;
     explicit PerTick(const f64 tps) :
-        seconds(     1          / tps),
-        milliseconds(1000       / tps),
-        microseconds(1000000    / tps),
-        nanoseconds( 1000000000 / tps) {}
+            seconds{     1          / tps},
+            milliseconds{1000       / tps},
+            microseconds{1000000    / tps},
+            nanoseconds{ 1000000000 / tps} {}
 };
 
-typedef struct Ticks {
+struct Ticks {
     const PerTick per_tick;
     const u64 per_second;
     Ticks() = delete;
-    explicit Ticks(const u64 tps) : per_second(tps), per_tick((f64)tps) {}
-} Ticks;
+    explicit Ticks(const u64 tps) : per_second{tps}, per_tick{(f64)tps} {}
+};
 
 struct Timer {
     f32 delta_time = 0;
@@ -38,7 +40,7 @@ struct Timer {
 
     Timer() = delete;
     Ticks *ticks = nullptr;
-    explicit Timer(Ticks *tks) : ticks(tks), ticks_before(os::getTicks()), ticks_of_last_report(os::getTicks()) {};
+    explicit Timer(Ticks *tks) : ticks{tks}, ticks_before{os::getTicks()}, ticks_of_last_report{os::getTicks()} {};
     void accumulate() {
         ticks_diff = ticks_after - ticks_before;
         accumulated_ticks += ticks_diff;
@@ -78,11 +80,11 @@ struct Timer {
 struct Timers {
     Timer update, render, aux;
     Timers() = delete;
-    explicit Timers(Ticks *ticks) : update(ticks), render(ticks), aux(ticks) {}
+    explicit Timers(Ticks *ticks) : update{ticks}, render{ticks}, aux{ticks} {}
 };
 
 struct Time {
     Ticks ticks;
     Timers timers;
-    Time() : ticks(os::ticks_per_second), timers(&ticks) {}
+    Time() : ticks{os::ticks_per_second}, timers{&ticks} {}
 };

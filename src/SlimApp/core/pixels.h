@@ -9,24 +9,27 @@
 #define RENDER_SIZE Megabytes(8 * PIXEL_SIZE)
 
 struct Dimensions {
-    u16 width = 0, height = 0;
-    u32 width_times_height;
-    f32 height_over_width = 0,
-        width_over_height = 0,
-        f_height = 0, f_width = 0,
-        h_height = 0, h_width = 0;
+    u32 width_times_height{0};
+    f32 width_over_height{0};
+    f32 height_over_width{0};
+    f32 f_width{0};
+    f32 f_height{0};
+    f32 h_width{0};
+    f32 h_height{0};
+    u16 width{0};
+    u16 height{0};
 
     Dimensions() = delete;
-    explicit Dimensions(u16 Width, u16 Height) :
-        width(Width),
-        height(Height),
-        width_times_height(Width * Height),
-        f_width((f32)Width),
-        f_height((f32)Height),
-        h_width((f32)Width / 2.0f),
-        h_height((f32)Height / 2.0f),
-        width_over_height((f32)Width / (f32)Height),
-        height_over_width((f32)Height / (f32)Width) {}
+    Dimensions(u16 Width, u16 Height) :
+            width_times_height{(u32)Width * (u32)Height},
+            width_over_height{(f32)Width / (f32)Height},
+            height_over_width{(f32)Height / (f32)Width},
+            f_width{(f32)Width},
+            f_height{(f32)Height},
+            h_width{(f32)Width * 0.5f},
+            h_height{(f32)Height * 0.5f},
+            width{Width},
+            height{Height} {}
 
     void update(u16 Width, u16 Height) {
         width = Width;
@@ -34,18 +37,20 @@ struct Dimensions {
         width_times_height = width * height;
         f_width  = (f32)width;
         f_height = (f32)height;
-        h_width  = f_width  / 2;
-        h_height = f_height / 2;
+        h_width  = f_width  * 0.5f;
+        h_height = f_height * 0.5f;
         width_over_height  = f_width  / f_height;
         height_over_width  = f_height / f_width;
     }
 };
-
 struct PixelGrid {
     Pixel* pixels = nullptr;
     Dimensions dimensions;
 
     PixelGrid() : dimensions(MAX_WIDTH, MAX_HEIGHT) {}
+
+    INLINE Pixel* row(u32 y) const { return pixels + y * (u32)dimensions.width; }
+    INLINE Pixel* operator[](u32 y) const { return row(y); }
 
     void fill(RGBA color) const {
         for (u32 i = 0; i < dimensions.width_times_height; i++)
@@ -181,62 +186,104 @@ struct PixelGrid {
         for (i32 y = min_y; y <= max_y; y++)
             drawHLine2D(color, min_x, max_x, y);
     }
+    void fillTriangle(RGBA color, vec2 v1, vec2 v2, vec2 v3) const {
+        // Cull this triangle against the edges of the viewport:
+        vec2 pixel_min = min(v1, min(v2, v3));
+        if (pixel_min.x >= dimensions.f_width ||
+            pixel_min.y >= dimensions.f_height)
+            return;
 
-    void fillTriangle(RGBA color, f32 *X, f32 *Y) {
-        u16 W = dimensions.width;
-        u16 H = dimensions.height;
-        f32 dx1, x1, y1, xs,
-                dx2, x2, y2, xe,
-                dx3, x3, y3, dy;
-        i32 offset,
-                x, x1i, y1i, x2i, xsi, ysi = 0,
-                y, y2i, x3i, y3i, xei, yei = 0;
-        for (u8 i = 1; i <= 2; i++) {
-            if (Y[i] < Y[ysi]) ysi = i;
-            if (Y[i] > Y[yei]) yei = i;
-        }
-        u8 id[3];
-        if (ysi) {
-            if (ysi == 1) {
-                id[0] = 1;
-                id[1] = 2;
-                id[2] = 0;
-            } else {
-                id[0] = 2;
-                id[1] = 0;
-                id[2] = 1;
+        vec2 pixel_max = max(v1, max(v2, v3));
+        if (pixel_max.x < 0 ||
+            pixel_max.y < 0)
+            return;
+
+        // Clip the bounds of the triangle to the viewport:
+        pixel_min = pixel_min.clamped();
+        pixel_max = pixel_max.clamped(vec2(dimensions.f_width - 1, dimensions.f_height - 1));
+
+        // Compute area components:
+        f32 ABy = v2.y - v1.y;
+        f32 ABx = v2.x - v1.x;
+
+        f32 ACy = v3.y - v1.y;
+        f32 ACx = v3.x - v1.x;
+
+        f32 ABC = ACx*ABy - ACy*ABx;
+
+        // Cull faces facing backwards:
+        if (ABC < 0) {
+            vec2 tmp = v3;
+            v3 = v2;
+            v2 = tmp;
+
+            ABy = v2.y - v1.y;
+            ABx = v2.x - v1.x;
+
+            ACy = v3.y - v1.y;
+            ACx = v3.x - v1.x;
+            ABC = ACx*ABy - ACy*ABx;
+        } else if (ABC == 0)
+            return;
+
+        // Floor bounds coordinates down to their integral component:
+        u32 first_x = (u32)pixel_min.x;
+        u32 first_y = (u32)pixel_min.y;
+        u32 last_x  = (u32)pixel_max.x;
+        u32 last_y  = (u32)pixel_max.y;
+
+        pixel_min.x = (f32)first_x;
+        pixel_min.y = (f32)first_y;
+        pixel_max.x = (f32)last_x;
+        pixel_max.y = (f32)last_y;
+
+        // Drawing: Top-down
+        // Origin: Top-left
+
+        // Compute weight constants:
+        f32 one_over_ABC = 1.0f / ABC;
+
+        f32 Cdx =  ABy * one_over_ABC;
+        f32 Bdx = -ACy * one_over_ABC;
+
+        f32 Cdy = -ABx * one_over_ABC;
+        f32 Bdy =  ACx * one_over_ABC;
+
+        // Compute initial areal coordinates for the first pixel center:
+        pixel_min = vec2{pixel_min.x + 0.5f, pixel_min.y + 0.5f};
+        f32 C_start = Cdx*pixel_min.x + Cdy*pixel_min.y + (v1.y*v2.x - v1.x*v2.y) * one_over_ABC;
+        f32 B_start = Bdx*pixel_min.x + Bdy*pixel_min.y + (v3.y*v1.x - v3.x*v1.y) * one_over_ABC;
+
+        f32 A, B, C;
+
+        // Scan the bounds:
+        for (u32 y = first_y; y <= last_y; y++, C_start += Cdy, B_start += Bdy) {
+            B = B_start;
+            C = C_start;
+
+            for (u32 x = first_x; x <= last_x; x++, B += Bdx, C += Cdx) {
+                if (Bdx < 0 && B < 0 ||
+                    Cdx < 0 && C < 0)
+                    break;
+
+                A = 1 - B - C;
+
+                // Skip the pixel if it's outside:
+                if (fminf(A, fminf(B, C)) < 0)
+                    continue;
+
+                pixels[dimensions.width * y + x].color = color;
             }
-        } else {
-            id[0] = 0;
-            id[1] = 1;
-            id[2] = 2;
-        }
-        x1 = X[id[0]]; y1 = Y[id[0]]; x1i = (i32)x1; y1i = (i32)y1;
-        x2 = X[id[1]]; y2 = Y[id[1]]; x2i = (i32)x2; y2i = (i32)y2;
-        x3 = X[id[2]]; y3 = Y[id[2]]; x3i = (i32)x3; y3i = (i32)y3;
-        dx1 = x1i == x2i || y1i == y2i ? 0 : (x2 - x1) / (y2 - y1);
-        dx2 = x2i == x3i || y2i == y3i ? 0 : (x3 - x2) / (y3 - y2);
-        dx3 = x1i == x3i || y1i == y3i ? 0 : (x3 - x1) / (y3 - y1);
-        dy = 1 - (y1 - (f32)y1);
-        xs = dx3 ? x1 + dx3 * dy : x1; ysi = (i32)Y[ysi];
-        xe = dx1 ? x1 + dx1 * dy : x1; yei = (i32)Y[yei];
-        offset = W * y1i;
-        for (y = ysi; y < yei; y++) {
-            if (y == y3i) xs = dx2 ? (x3 + dx2 * (1 - (y3 - (f32)y3i))) : x3;
-            if (y == y2i) xe = dx2 ? (x2 + dx2 * (1 - (y2 - (f32)y2i))) : x2;
-            xsi = (i32)xs;
-            xei = (i32)xe;
-            for (x = xsi; x < xei; x++) {
-                if (x > 0 && x < W && y > 0 && y < H)
-                    pixels[offset + x].color = color;
-            }
-            offset += W;
-            xs += y < y3i ? dx3 : dx2;
-            xe += y < y2i ? dx1 : dx2;
         }
     }
+    void fillTriangle(RGBA color, f32 *X, f32 *Y) const {
+        vec2 v1{*X++, *Y++};
+        vec2 v2{*X++, *Y++};
+        vec2 v3{*X, *Y};
+        return fillTriangle(color, v1, v2, v3);
+    }
 
-    void drawCircle(RGBA color, i32 center_x, i32 center_y, i32 radius) {
+    void drawCircle(RGBA color, i32 center_x, i32 center_y, i32 radius) const {
         if (radius <= 1) {
             if (inRange(0, center_x, dimensions.width - 1) &&
                 inRange(0, center_y, dimensions.height - 1))
@@ -302,7 +349,9 @@ struct PixelGrid {
             Ex2 += 1;
         }
     }
-
+    INLINE void drawCircle(RGBA color, vec2i center, i32 radius) const {
+        return drawCircle(color, center.x, center.y, radius);
+    }
     void fillCircle(RGBA color, i32 center_x, i32 center_y, i32 radius) const {
         if (radius <= 1) {
             if (inRange(0, center_x, dimensions.width - 1) &&

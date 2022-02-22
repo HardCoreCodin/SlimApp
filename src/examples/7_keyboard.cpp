@@ -59,45 +59,45 @@ struct KeyboardApp : public SlimApp {
         rect.max.x = 250;
         rect.min.y = 260;
         rect.max.y = 278;
-        window_content.fillRect(Color(app->controls.is_pressed.ctrl ? Blue : Cyan), rect);
+        window_content.fillRect(Color(controls.is_pressed.ctrl ? Blue : Cyan), rect);
 
         // Draw the left Alt key:
         rect.min.x += 30;
         rect.max.x += 30;
-        window_content.fillRect(Color(app->controls.is_pressed.alt ? Red : Magenta), rect);
+        window_content.fillRect(Color(controls.is_pressed.alt ? Red : Magenta), rect);
 
         // Draw the left Shift key:
         rect.min.x -= 30;
         rect.max.x -= 15;
         rect.min.y -= 20;
         rect.max.y -= 20;
-        window_content.fillRect(Color(app->controls.is_pressed.shift ? Green : Yellow), rect);
+        window_content.fillRect(Color(controls.is_pressed.shift ? Green : Yellow), rect);
 
         // Draw the right Ctrl key:
         rect.min.x = 420;
         rect.max.x = 448;
         rect.min.y = 260;
         rect.max.y = 278;
-        window_content.fillRect(Color(app->controls.is_pressed.ctrl ? Blue : Cyan), rect);
+        window_content.fillRect(Color(controls.is_pressed.ctrl ? Blue : Cyan), rect);
 
         // Draw the right Alt key:
         rect.min.x -= 30;
         rect.max.x -= 30;
-        window_content.fillRect(Color(app->controls.is_pressed.alt ? Red : Magenta), rect);
+        window_content.fillRect(Color(controls.is_pressed.alt ? Red : Magenta), rect);
 
         // Draw the right Shift key:
         rect.min.x += 15;
         rect.max.x += 30;
         rect.min.y -= 20;
         rect.max.y -= 20;
-        window_content.fillRect(Color(app->controls.is_pressed.shift ? Green : Yellow), rect);
+        window_content.fillRect(Color(controls.is_pressed.shift ? Green : Yellow), rect);
 
         // Draw the Space key:
         rect.min.x = 280;
         rect.max.x = 390;
         rect.min.y = 260;
         rect.max.y = 278;
-        window_content.fillRect(Color(app->controls.is_pressed.space ? White : Grey), rect);
+        window_content.fillRect(Color(controls.is_pressed.space ? White : Grey), rect);
     }
 };
 SlimApp* createApp() { return new KeyboardApp(); }

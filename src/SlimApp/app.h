@@ -11,12 +11,12 @@ struct SlimApp {
     PixelGrid window_content;
     Time time;
 
-    bool is_running = true;
-    void *user_data = nullptr;
-    char* window_title = (char*)"";
-    u16 window_width = 480,
-            window_height = 360;
-    u64 additional_memory_size = 0;
+    bool is_running{true};
+    void *user_data{nullptr};
+    char* window_title{(char*)""};
+    u16 window_width{480};
+    u16 window_height{360};
+    u64 additional_memory_size{0};
 
     virtual bool OnReady() { return true; }
     virtual void OnWindowRedraw() {};
@@ -39,7 +39,7 @@ struct SlimApp {
             return false;
         }
 
-        memory.init((u8*)memory_address, size);
+        memory = Memory{(u8*)memory_address, size};
         return true;
     }
 
@@ -52,10 +52,9 @@ struct SlimApp {
     }
 
 private:
-    Memory memory;
+    Memory memory{nullptr, 0};
 };
 
 SlimApp* createApp();
-SlimApp *app;
 
 #include "./platforms/win32.h"

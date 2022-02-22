@@ -9,14 +9,11 @@
 #define MEMORY_BASE Terabytes(2)
 
 struct Memory {
-    u8* address = nullptr;
-    u64 capacity = 0;
-    u64 occupied = 0;
+    u8* address;
+    u64 capacity, occupied;
 
-    void init(u8* Address, const u64 Capacity) {
-        address = Address;
-        capacity = Capacity;
-    }
+    Memory(u8* address, const u64 capacity) : address{address}, capacity{capacity}, occupied{0} {}
+
     void* allocate(u64 size) {
         if (!address) return nullptr;
         occupied += size;

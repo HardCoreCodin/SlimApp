@@ -153,9 +153,11 @@ bool os::writeToFile(LPVOID out, DWORD size, HANDLE handle) {
     return result != FALSE;
 }
 
+SlimApp *CURRENT_APP;
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     MouseButton *mouse_button;
-    IsPressed *is_pressed = &app->controls.is_pressed;
+    IsPressed *is_pressed = &CURRENT_APP->controls.is_pressed;
     bool pressed = message == WM_SYSKEYDOWN || message == WM_KEYDOWN;
     u8 key = (u8)wParam;
     i32 x, y;
@@ -163,7 +165,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
     switch (message) {
         case WM_DESTROY:
-            app->is_running = false;
+            CURRENT_APP->is_running = false;
             PostQuitMessage(0);
             break;
 
@@ -172,17 +174,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
             info.bmiHeader.biWidth = win_rect.right - win_rect.left;
             info.bmiHeader.biHeight = win_rect.top - win_rect.bottom;
-            app->window_content.dimensions.update((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
-            app->OnWindowResize((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
-            app->OnWindowRedraw();
+            CURRENT_APP->window_content.dimensions.update((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
+            CURRENT_APP->OnWindowResize((u16)info.bmiHeader.biWidth, (u16)-info.bmiHeader.biHeight);
+            CURRENT_APP->OnWindowRedraw();
 
             break;
 
         case WM_PAINT:
             SetDIBitsToDevice(win_dc,
-                              0, 0, app->window_content.dimensions.width, app->window_content.dimensions.height,
-                              0, 0, 0, app->window_content.dimensions.height,
-                              (u32*)app->window_content.pixels, &info, DIB_RGB_COLORS);
+                              0, 0, CURRENT_APP->window_content.dimensions.width, CURRENT_APP->window_content.dimensions.height,
+                              0, 0, 0, CURRENT_APP->window_content.dimensions.height,
+                              (u32*)CURRENT_APP->window_content.pixels, &info, DIB_RGB_COLORS);
 
             ValidateRgn(window, nullptr);
             break;
@@ -199,7 +201,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 case VK_TAB    : is_pressed->tab   = pressed; break;
                 default: break;
             }
-            app->OnKeyChanged(key, pressed);
+            CURRENT_APP->OnKeyChanged(key, pressed);
 
             break;
 
@@ -218,35 +220,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             switch (message) {
                 case WM_MBUTTONUP:
                 case WM_MBUTTONDOWN:
-                case WM_MBUTTONDBLCLK: mouse_button = &app->controls.mouse.middle_button; break;
+                case WM_MBUTTONDBLCLK: mouse_button = &CURRENT_APP->controls.mouse.middle_button; break;
                 case WM_RBUTTONUP:
                 case WM_RBUTTONDOWN:
-                case WM_RBUTTONDBLCLK: mouse_button = &app->controls.mouse.right_button; break;
-                default: mouse_button = &app->controls.mouse.left_button;
+                case WM_RBUTTONDBLCLK: mouse_button = &CURRENT_APP->controls.mouse.right_button; break;
+                default: mouse_button = &CURRENT_APP->controls.mouse.left_button;
             }
 
             switch (message) {
                 case WM_MBUTTONDBLCLK:
                 case WM_RBUTTONDBLCLK:
-                case WM_LBUTTONDBLCLK: mouse_button->doubleClick(x, y); app->controls.mouse.double_clicked = true; app->OnMouseButtonDoubleClicked(mouse_button); break;
+                case WM_LBUTTONDBLCLK: mouse_button->doubleClick(x, y); CURRENT_APP->controls.mouse.double_clicked = true; CURRENT_APP->OnMouseButtonDoubleClicked(mouse_button); break;
                 case WM_MBUTTONUP:
                 case WM_RBUTTONUP:
-                case WM_LBUTTONUP:     mouse_button->up(x, y);   app->OnMouseButtonUp(mouse_button); break;
-                default:               mouse_button->down(x, y); app->OnMouseButtonDown(mouse_button); break;
+                case WM_LBUTTONUP:     mouse_button->up(x, y);   CURRENT_APP->OnMouseButtonUp(mouse_button); break;
+                default:               mouse_button->down(x, y); CURRENT_APP->OnMouseButtonDown(mouse_button); break;
             }
 
             break;
 
         case WM_MOUSEWHEEL:
             scroll_amount = (f32)(GET_WHEEL_DELTA_WPARAM(wParam)) / (f32)(WHEEL_DELTA);
-            app->controls.mouse.scroll(scroll_amount); app->OnMouseWheelScrolled(scroll_amount);
+            CURRENT_APP->controls.mouse.scroll(scroll_amount); CURRENT_APP->OnMouseWheelScrolled(scroll_amount);
             break;
 
         case WM_MOUSEMOVE:
             x = GET_X_LPARAM(lParam);
             y = GET_Y_LPARAM(lParam);
-            app->controls.mouse.move(x, y);        app->OnMouseMovementSet(x, y);
-            app->controls.mouse.setPosition(x, y); app->OnMousePositionSet(x, y);
+            CURRENT_APP->controls.mouse.move(x, y);        CURRENT_APP->OnMouseMovementSet(x, y);
+            CURRENT_APP->controls.mouse.setPosition(x, y); CURRENT_APP->OnMousePositionSet(x, y);
             break;
 
         case WM_INPUT:
@@ -255,7 +257,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     raw_inputs.data.mouse.lLastY != 0)) {
                 x = raw_inputs.data.mouse.lLastX;
                 y = raw_inputs.data.mouse.lLastY;
-                app->controls.mouse.moveRaw(x, y); app->OnMouseRawMovementSet(x, y);
+                CURRENT_APP->controls.mouse.moveRaw(x, y); CURRENT_APP->OnMouseRawMovementSet(x, y);
             }
 
         default:
@@ -277,14 +279,14 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     QueryPerformanceFrequency(&performance_frequency);
     os::ticks_per_second = (u64)performance_frequency.QuadPart;
 
-    app = createApp();
-    app->window_content.pixels = (Pixel*)window_content_memory;
-    app->controls.key_map.ctrl = VK_CONTROL;
-    app->controls.key_map.alt = VK_MENU;
-    app->controls.key_map.shift = VK_SHIFT;
-    app->controls.key_map.space = VK_SPACE;
-    app->controls.key_map.tab = VK_TAB;
-    if (!app->OnReady()) return -1;
+    CURRENT_APP = createApp();
+    CURRENT_APP->window_content.pixels = (Pixel*)window_content_memory;
+    CURRENT_APP->controls.key_map.ctrl = VK_CONTROL;
+    CURRENT_APP->controls.key_map.alt = VK_MENU;
+    CURRENT_APP->controls.key_map.shift = VK_SHIFT;
+    CURRENT_APP->controls.key_map.space = VK_SPACE;
+    CURRENT_APP->controls.key_map.tab = VK_TAB;
+    if (!CURRENT_APP->OnReady()) return -1;
 
     info.bmiHeader.biSize        = sizeof(info.bmiHeader);
     info.bmiHeader.biCompression = BI_RGB;
@@ -301,13 +303,13 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
     win_rect.top = 0;
     win_rect.left = 0;
-    win_rect.right  = app->window_width;
-    win_rect.bottom = app->window_height;
+    win_rect.right  = CURRENT_APP->window_width;
+    win_rect.bottom = CURRENT_APP->window_height;
     AdjustWindowRect(&win_rect, WS_OVERLAPPEDWINDOW, false);
 
     window = CreateWindowA(
             window_class.lpszClassName,
-            app->window_title,
+            CURRENT_APP->window_title,
             WS_OVERLAPPEDWINDOW,
 
             CW_USEDEFAULT,
@@ -335,12 +337,12 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     ShowWindow(window, nCmdShow);
 
     MSG message;
-    while (app->is_running) {
+    while (CURRENT_APP->is_running) {
         while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&message);
             DispatchMessageA(&message);
         }
-        app->OnWindowRedraw();
+        CURRENT_APP->OnWindowRedraw();
         InvalidateRgn(window, nullptr, false);
     }
 

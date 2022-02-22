@@ -9,9 +9,9 @@ struct GameApp : public SlimApp {
     };
 
     struct Player {
-        f32 size = 10;
-        f32 speed = 80;
-        vec2 pos{20, 20};
+        f32 size{10};
+        f32 speed{80};
+        vec2 pos{20.0f, 20.0f};
     };
 
     struct Game {
@@ -69,9 +69,9 @@ struct GameApp : public SlimApp {
         rect.max.x = (i16)(player.pos.x + player.size);
         rect.min.y = (i16)(player.pos.y - player.size);
         rect.max.y = (i16)(player.pos.y + player.size);
-        PixelGrid &canvas = app->window_content;
-        canvas.fill(Color(Black));
-        canvas.fillRect(Color(Blue), rect);
+
+        window_content.fill(Color(Black));
+        window_content.fillRect(Color(Blue), rect);
 
         timer.endFrame();
     }

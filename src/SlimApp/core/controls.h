@@ -2,9 +2,7 @@
 
 struct MouseButton {
     vec2i down_pos, up_pos, double_click_pos;
-    bool is_pressed = false,
-         is_handled = false,
-         double_clicked = false;
+    bool is_pressed{false}, is_handled{false}, double_clicked{false};
 
     void down(i32 x, i32 y) {
         is_pressed = true;
@@ -32,14 +30,16 @@ struct MouseButton {
 struct Mouse {
     MouseButton middle_button, right_button, left_button;
     vec2i pos, pos_raw_diff, movement;
-    f32 wheel_scroll_amount = 0;
-    bool moved = false, is_captured = false,
-         move_handled = false,
-         double_clicked = false,
-         double_clicked_handled = false,
-         wheel_scrolled = false,
-         wheel_scroll_handled = false,
-         raw_movement_handled = false;
+    f32 wheel_scroll_amount{0};
+
+    bool moved{false};
+    bool is_captured{false};
+    bool move_handled{false};
+    bool double_clicked{false};
+    bool double_clicked_handled{false};
+    bool wheel_scrolled{false};
+    bool wheel_scroll_handled{false};
+    bool raw_movement_handled{false};
 
     void resetChanges() {
         if (move_handled) {
@@ -85,20 +85,8 @@ struct Mouse {
     }
 };
 
-struct KeyMap {
-    u8 ctrl = 0,
-       alt = 0,
-       shift = 0,
-       space = 0,
-       tab = 0;
-};
-struct IsPressed {
-    bool ctrl = false,
-         alt = false,
-         shift = false,
-         space = false,
-         tab = false;
-};
+struct KeyMap { u8 ctrl{0}, alt{0}, shift{0}, space{0}, tab{0}; };
+struct IsPressed { bool ctrl{false}, alt{false}, shift{false}, space{false}, tab{false}; };
 struct Controls {
     KeyMap key_map;
     IsPressed is_pressed;
